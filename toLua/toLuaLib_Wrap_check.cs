@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Diagnostics;
 using NLua;
+using LuaState = KeraLua.LuaState;
 
 //	toLuaLib_Wrap_get.cs
 //	Author: Lu Zexi
@@ -17,11 +18,11 @@ namespace toLua
 	//tolua lib
 	public partial class toLuaLib
 	{
-		public static bool CheckTypes(Lua L, Type[] types, int begin)
+		public static bool CheckTypes(LuaState L, Type[] types, int begin)
 		{        
 			for (int i = 0; i < types.Length; i++)
 			{
-				LuaTypes luaType = LuaLib.LuaType(L.luastate, i + begin);
+				LuaTypes luaType = LuaLib.LuaType(L, i + begin);
 				
 				if (!CheckType(L, luaType, types[i], i + begin))
 				{
@@ -32,7 +33,7 @@ namespace toLua
 			return true;
 		}
 		
-		public static bool CheckParamsType(Lua L, Type t, int begin, int count)
+		public static bool CheckParamsType(LuaState L, Type t, int begin, int count)
 		{        
 			//默认都可以转 object
 			if (t == typeof(object))
@@ -42,7 +43,7 @@ namespace toLua
 			
 			for (int i = 0; i < count; i++)
 			{
-				LuaTypes luaType = LuaLib.LuaType(L.luastate, i + begin);
+				LuaTypes luaType = LuaLib.LuaType(L, i + begin);
 				
 				if (!CheckType(L, luaType, t, i + begin))
 				{
@@ -53,7 +54,7 @@ namespace toLua
 			return true;
 		}
 		
-		static bool CheckType(Lua L, LuaTypes luaType, Type t, int pos)
+		static bool CheckType(LuaState L, LuaTypes luaType, Type t, int pos)
 		{
 			switch (luaType)
 			{
@@ -78,7 +79,7 @@ namespace toLua
 			return false;
 		}
 		
-		static bool CheckUserData(Lua L, LuaTypes luaType, Type t, int pos)
+		static bool CheckUserData(LuaState L, LuaTypes luaType, Type t, int pos)
 		{
 			if (t == typeof(object))
 			{

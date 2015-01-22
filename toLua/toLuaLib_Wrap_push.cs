@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Diagnostics;
 using NLua;
+using LuaState = KeraLua.LuaState;
 
 
 //	toLuaLib_Wrap_push.cs
@@ -20,157 +21,157 @@ namespace toLua
 	public partial class toLuaLib
 	{
 		//压入一个object变量
-		public static void PushVarObject(Lua L, object o)
+		public static void PushVarObject(LuaState L, object o)
 		{
-			ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L.luastate);
-			translator.Push(L.luastate, o);
+			ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+			translator.Push(L, o);
 		}
 		
-		public static void Push(Lua L, Type t)
+		public static void Push(LuaState L, Type t)
 		{
 			PushObject(L, t);
 		}
 		
-		public static void Push(Lua L, UnityEngine.Object obj)
+		public static void Push(LuaState L, UnityEngine.Object obj)
 		{
 			PushObject(L, obj == null ? null : obj);
 		}
 		
 		//压入一个从object派生的变量
-		public static void PushObject(Lua L, object o)
+		public static void PushObject(LuaState L, object o)
 		{
-			ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L.luastate);
-			translator.PushObject(L.luastate, o, "luaNet_metatable");
+			ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+			translator.PushObject(L, o, "luaNet_metatable");
 		}
 		
-		public static void PushValue(Lua L, object obj)
+		public static void PushValue(LuaState L, object obj)
 		{
-			ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L.luastate);
+			ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
 			//translator.PushValueResult(L.luastate, obj);
-			translator.PushObject(L.luastate, obj,"luaNet_metatable");
+			translator.PushObject(L, obj,"luaNet_metatable");
 		}
 		
-		public static void Push(Lua L, bool b)
+		public static void Push(LuaState L, bool b)
 		{
-			LuaLib.LuaPushBoolean(L.luastate, b);        
+			LuaLib.LuaPushBoolean(L, b);        
 		}
 		
-		public static void Push(Lua L, string str)
+		public static void Push(LuaState L, string str)
 		{
-			LuaLib.LuaPushString(L.luastate, str);
+			LuaLib.LuaPushString(L, str);
 		}
 		
-		public static void Push(Lua L, char d)
+		public static void Push(LuaState L, char d)
 		{
-			LuaLib.LuaPushNumber(L.luastate, d);
+			LuaLib.LuaPushNumber(L, d);
 		}
 		
-		public static void Push(Lua L, sbyte d)
+		public static void Push(LuaState L, sbyte d)
 		{
-			LuaLib.LuaPushNumber(L.luastate, d);
+			LuaLib.LuaPushNumber(L, d);
 		}
 		
-		public static void Push(Lua L, byte d)
+		public static void Push(LuaState L, byte d)
 		{
-			LuaLib.LuaPushNumber(L.luastate, d);
+			LuaLib.LuaPushNumber(L, d);
 		}
 		
-		public static void Push(Lua L, short d)
+		public static void Push(LuaState L, short d)
 		{
-			LuaLib.LuaPushNumber(L.luastate, d);
+			LuaLib.LuaPushNumber(L, d);
 		}
 		
-		public static void Push(Lua L, ushort d)
+		public static void Push(LuaState L, ushort d)
 		{
-			LuaLib.LuaPushNumber(L.luastate, d);
+			LuaLib.LuaPushNumber(L, d);
 		}
 		
-		public static void Push(Lua L, int d)
+		public static void Push(LuaState L, int d)
 		{
-			LuaLib.LuaPushNumber(L.luastate, d);
+			LuaLib.LuaPushNumber(L, d);
 		}
 		
-		public static void Push(Lua L, uint d)
+		public static void Push(LuaState L, uint d)
 		{
-			LuaLib.LuaPushNumber(L.luastate, d);
+			LuaLib.LuaPushNumber(L, d);
 		}
 		
-		public static void Push(Lua L, long d)
+		public static void Push(LuaState L, long d)
 		{
-			LuaLib.LuaPushNumber(L.luastate, d);
+			LuaLib.LuaPushNumber(L, d);
 		}
 		
-		public static void Push(Lua L, ulong d)
+		public static void Push(LuaState L, ulong d)
 		{
-			LuaLib.LuaPushNumber(L.luastate, d);
+			LuaLib.LuaPushNumber(L, d);
 		}
 		
-		public static void Push(Lua L, float d)
+		public static void Push(LuaState L, float d)
 		{
-			LuaLib.LuaPushNumber(L.luastate, d);
+			LuaLib.LuaPushNumber(L, d);
 		}
 		
-		public static void Push(Lua L, decimal d)
+		public static void Push(LuaState L, decimal d)
 		{
-			LuaLib.LuaPushNumber(L.luastate, (double)d);
+			LuaLib.LuaPushNumber(L, (double)d);
 		}
 		
-		public static void Push(Lua L, double d)
+		public static void Push(LuaState L, double d)
 		{
-			LuaLib.LuaPushNumber(L.luastate, d);
+			LuaLib.LuaPushNumber(L, d);
 		}
 		
-		public static void Push(Lua L, KeraLua.LuaTag p)
+		public static void Push(LuaState L, KeraLua.LuaTag p)
 		{
-			LuaLib.LuaPushLightUserData(L.luastate, p);
+			LuaLib.LuaPushLightUserData(L, p);
 		}
 		
-		public static void Push(Lua L, ILuaGeneratedType o)
+		public static void Push(LuaState L, ILuaGeneratedType o)
 		{
 			if (o == null)
 			{
-				LuaLib.LuaPushNil(L.luastate);
+				LuaLib.LuaPushNil(L);
 			}
 			else
 			{
 				LuaTable table = o.LuaInterfaceGetLuaTable();
-				table.Push(L.luastate);
+				table.Push(L);
 			}
 		}
 		
-		public static void Push(Lua L, LuaTable lt)
+		public static void Push(LuaState L, LuaTable lt)
 		{
 			if (lt == null)
 			{
-				LuaLib.LuaPushNil(L.luastate);            
+				LuaLib.LuaPushNil(L);            
 			}
 			else
 			{
-				lt.Push(L.luastate);
+				lt.Push(L);
 			}
 		}
 		
-		public static void Push(Lua L, LuaFunction func)
+		public static void Push(LuaState L, LuaFunction func)
 		{
 			if (func == null)
 			{
-				LuaLib.LuaPushNil(L.luastate);   
+				LuaLib.LuaPushNil(L);   
 			}
 			else
 			{
-				func.Push(L.luastate);
+				func.Push(L);
 			}
 		}
 		
-		public static void Push(Lua L, KeraLua.LuaNativeFunction func)
+		public static void Push(LuaState L, KeraLua.LuaNativeFunction func)
 		{
 			if (func == null)
 			{
-				LuaLib.LuaPushNil(L.luastate);
+				LuaLib.LuaPushNil(L);
 				return;
 			}
-			ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L.luastate);
-			translator.PushFunction(L.luastate, func);
+			ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+			translator.PushFunction(L, func);
 		}
 	}
 }
