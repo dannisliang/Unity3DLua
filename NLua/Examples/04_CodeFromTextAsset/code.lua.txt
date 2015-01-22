@@ -1,0 +1,2 @@
+local UnityEngine = CLRPackage("UnityEngine", "UnityEngine")
+UnityEngine.Debug.Log('Hello Lua!')

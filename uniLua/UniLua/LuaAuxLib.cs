@@ -637,6 +637,51 @@ namespace UniLua
 			API.Pop( nup );
 		}
 
+		//set func . Author: luzexi
+		public void L_RegistLib( string libNname , LuaMethod[] methods , LuaField[] fields , string baseName )
+		{
+			//create table
+			// set metatable
+
+			// set global 
+
+			//set method
+			for(int i = 0 ; i<methods.Length ; i++)
+			{
+				API.PushString(methods[i].name);
+				API.PushCSharpFunction(methods[i].func);
+				API.RawSet(-3);
+			}
+			//set fieldfo
+			for(int i = 0 ; i<fields.Length ; i++)
+			{
+				//create field name
+				API.PushString(fields[i].name);
+
+				API.CreateTable(2,2);
+				//set getter
+				if( fields[i].getter != null )
+				{
+					API.PushCSharpFunction(fields[i].getter);
+					API.RawGetI(-2,1);
+				}
+
+				//set setter
+				if( fields[i].setter != null )
+				{
+					API.PushCSharpFunction(fields[i].setter);
+					API.RawGetI(-2,2);
+				}
+
+				//set field table
+				API.RawSet(-3);
+			}
+
+			//set metatable
+			API.SetMetaTable(-2);
+			API.SetTop(0);
+		}
+
 		private bool FindField( int objIndex, int level )
 		{
 			if( level == 0 || !API.IsTable(-1) )
