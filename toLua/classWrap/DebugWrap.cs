@@ -1,4 +1,4 @@
-
+using UnityEngine;
 using toLua;
 using NLua;
 
@@ -20,22 +20,35 @@ public class DebugWrap
 
 	public DebugWrap ()
 	{
+		//
+	}
+
+	public static void Regist()
+	{
+		toLua.LuaEngine.sInstance.RegisterClass ("Debug", typeof(Debug), methods, null, "");
 	}
 
 	static int Log(KeraLua.LuaState luastate)
 	{
 		toLuaLib.CheckArgsCount(luastate, 1);
-//		string str = LuaLib.get
+		string str = LuaLib.LuaToString (luastate, -1);
+		Debug.Log(str);
 		return 1;
 	}
 
 	static int LogWarning(KeraLua.LuaState luastate)
 	{
+		toLuaLib.CheckArgsCount(luastate, 1);
+		string str = LuaLib.LuaToString (luastate, -1);
+		Debug.LogWarning(str);
 		return 1;
 	}
 
 	static int LogError(KeraLua.LuaState luastate)
 	{
+		toLuaLib.CheckArgsCount(luastate, 1);
+		string str = LuaLib.LuaToString (luastate, -1);
+		Debug.LogError(str);
 		return 1;
 	}
 }

@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Diagnostics;
 using NLua;
+using LuaState = KeraLua.LuaState;
 
 
 //  toLuaRegister.cs
@@ -189,77 +190,80 @@ namespace toLua
 		//////////////////// Regist Functions ////////////////////
 
         //Regist Lib
-        public static void RegisterClass( Lua lua , string libNname , Type type ,
+        public static void RegisterClass( LuaState lua , string libNname , Type type ,
             LuaMethod[] methods , LuaField[] fields , string baseName )
         {
 			//create table
-			CreateTable(lua.luastate ,libNname);
+			CreateTable(lua ,libNname);
 
 			//set metatable
-			LuaLib.LuaLGetMetatable (lua.luastate, type.AssemblyQualifiedName);
-			if(LuaLib.LuaIsNil(lua.luastate , -1))
+			LuaLib.LuaLGetMetatable (lua, type.AssemblyQualifiedName);
+			if(LuaLib.LuaIsNil(lua , -1))
 			{
-				LuaLib.LuaPop(lua.luastate,1);
-				LuaLib.LuaLNewMetatable(lua.luastate,type.AssemblyQualifiedName);
+				LuaLib.LuaPop(lua,1);
+				LuaLib.LuaLNewMetatable(lua,type.AssemblyQualifiedName);
 			}
 			if(!string.IsNullOrEmpty(baseName))
 			{
-				LuaLib.LuaPushString(lua.luastate , "base");
-				CreateTable(lua.luastate , baseName);
-				LuaLib.LuaRawSet(lua.luastate , -3);
+				LuaLib.LuaPushString(lua , "base");
+				CreateTable(lua , baseName);
+				LuaLib.LuaRawSet(lua , -3);
 			}
 
 			//set __index __newindex __call __gc
-			LuaLib.LuaPushString(lua.luastate, "__index");
-			LuaLib.LuaPushString(lua.luastate, toLuaIndex);
-			LuaLib.LuaRawGet(lua.luastate, (int)LuaIndexes.Registry);
-			LuaLib.LuaRawSet(lua.luastate, -3);
+			LuaLib.LuaPushString(lua, "__index");
+			LuaLib.LuaPushString(lua, toLuaIndex);
+			LuaLib.LuaRawGet(lua, (int)LuaIndexes.Registry);
+			LuaLib.LuaRawSet(lua, -3);
 			
-			LuaLib.LuaPushString(lua.luastate, "__newindex");
-			LuaLib.LuaPushString(lua.luastate, toLuaNewIndex);
-			LuaLib.LuaRawGet(lua.luastate, (int)LuaIndexes.Registry);        
-			LuaLib.LuaRawSet(lua.luastate, -3);
+			LuaLib.LuaPushString(lua, "__newindex");
+			LuaLib.LuaPushString(lua, toLuaNewIndex);
+			LuaLib.LuaRawGet(lua, (int)LuaIndexes.Registry);        
+			LuaLib.LuaRawSet(lua, -3);
 			
-			LuaLib.LuaPushString(lua.luastate, "__call");
-			LuaLib.LuaPushString(lua.luastate, toLuaTableCall);
-			LuaLib.LuaRawGet(lua.luastate, (int)LuaIndexes.Registry);
-			LuaLib.LuaRawSet(lua.luastate, -3);
+			LuaLib.LuaPushString(lua, "__call");
+			LuaLib.LuaPushString(lua, toLuaTableCall);
+			LuaLib.LuaRawGet(lua, (int)LuaIndexes.Registry);
+			LuaLib.LuaRawSet(lua, -3);
 
-			LuaLib.LuaPushString(lua.luastate, "__gc");
-			LuaLib.LuaPushStdCallCFunction(lua.luastate, new KeraLua.LuaNativeFunction(__gc));
-			LuaLib.LuaRawSet(lua.luastate, -3);
+			LuaLib.LuaPushString(lua, "__gc");
+			LuaLib.LuaPushStdCallCFunction(lua, new KeraLua.LuaNativeFunction(__gc));
+			LuaLib.LuaRawSet(lua, -3);
 
             //set methods
+			if(methods != null)
 			for(int i = 0 ; i<methods.Length ; i++)
 			{
-				LuaLib.LuaPushString(lua.luastate , methods[i].name);
-				LuaLib.LuaPushStdCallCFunction(lua.luastate , methods[i].func);
-				LuaLib.LuaRawSet(lua.luastate , -3);
+				LuaLib.LuaPushString(lua , methods[i].name);
+				LuaLib.LuaPushStdCallCFunction(lua , methods[i].func);
+				LuaLib.LuaRawSet(lua , -3);
 			}
+
 			//set fields
+			if(fields != null)
 			for(int i = 0 ; i<fields.Length ; i++)
 			{
-				LuaLib.LuaPushString(lua.luastate , fields[i].name);
-				LuaLib.LuaCreateTable(lua.luastate , 2 , 2);
+				LuaLib.LuaPushString(lua , fields[i].name);
+				LuaLib.LuaCreateTable(lua , 2 , 2);
 				//set getter in field table
 				if(fields[i].getter != null)
 				{
-					LuaLib.LuaPushStdCallCFunction(lua.luastate,fields[i].getter);
-					LuaLib.LuaRawSetI(lua.luastate , -2 , 1);
+					LuaLib.LuaPushStdCallCFunction(lua,fields[i].getter);
+					LuaLib.LuaRawSetI(lua , -2 , 1);
 				}
 				//set setter in field table
 				if(fields[i].setter != null)
 				{
-					LuaLib.LuaPushStdCallCFunction(lua.luastate , fields[i].setter);
-					LuaLib.LuaRawSetI(lua.luastate , -2 , 2);
+					LuaLib.LuaPushStdCallCFunction(lua , fields[i].setter);
+					LuaLib.LuaRawSetI(lua , -2 , 2);
 				}
 				//set field table in table which create at front
-				LuaLib.LuaRawSet(lua.luastate , -3);
+				LuaLib.LuaRawSet(lua , -3);
 			}
 
 			//set meta table
-			LuaLib.LuaSetMetatable (lua.luastate, -2);
-			LuaLib.LuaSetTop(lua.luastate , 0);
+			LuaLib.LuaSetMetatable (lua, -2);
+			LuaLib.LuaSetTop(lua , 0);
         }
     }
 }
