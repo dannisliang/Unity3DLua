@@ -26,6 +26,8 @@ namespace Lua52
 		LUA_TTHREAD	= 8
 	}
 
+	public delegate int LuaNativeFunction (IntPtr luaState);
+
 	public class Lua52Native
 	{
 		private const double LUA_VERSION_NUM = 502;
@@ -39,7 +41,11 @@ namespace Lua52
 		public const int LUA_RIDX_GLOBALS = 2;
 		public const int LUA_RIDX_LAST =2;
 
+		public const int LUA_MULTRET = -1;
+
 	    private const string LUA_DLL = "lua";
+
+		/*****************************************************************/
 
 	    [DllImport(LUA_DLL , EntryPoint = "lua_newstate")]
 	    public static extern IntPtr lua_newstate(IntPtr f, IntPtr ud);
@@ -49,7 +55,7 @@ namespace Lua52
 	    [DllImport(LUA_DLL)]
 	    public static extern IntPtr lua_newthread (IntPtr L);
 	    [DllImport(LUA_DLL)]
-	    public static extern IntPtr lua_atpanic(IntPtr L, IntPtr panicf);
+		public static extern LuaNativeFunction lua_atpanic(IntPtr L, LuaNativeFunction panicf);
 
 	    [DllImport(LUA_DLL , EntryPoint = "lua_version")]
 	    public static extern double lua_version(IntPtr L);
@@ -109,7 +115,7 @@ namespace Lua52
 	    [DllImport(LUA_DLL)]
 	    public static extern int lua_rawlen(IntPtr L, int idx);
 	    [DllImport(LUA_DLL)]
-	    public static extern IntPtr lua_tocfunction(IntPtr L, int idx);
+		public static extern LuaNativeFunction lua_tocfunction(IntPtr L, int idx);
 	    [DllImport(LUA_DLL)]
 	    public static extern IntPtr lua_touserdata(IntPtr L, int idx);
 	    [DllImport(LUA_DLL)]
@@ -163,7 +169,7 @@ namespace Lua52
 	    // [DllImport(LUA_DLL)]
 	    // public static extern const string lua_pushfstring(IntPtr L, const string fmt, ...);
 	    [DllImport(LUA_DLL)]
-	    public static extern void  lua_pushcclosure(IntPtr L, IntPtr fn, int n);
+		public static extern void  lua_pushcclosure(IntPtr L, LuaNativeFunction fn, int n);
 	    [DllImport(LUA_DLL)]
 	    public static extern void  lua_pushboolean (IntPtr L, int b);
 	    [DllImport(LUA_DLL)]
@@ -221,11 +227,11 @@ namespace Lua52
 	    */
 	    [DllImport(LUA_DLL)]
 	    public static extern void  lua_callk(IntPtr L, int nargs, int nresults, int ctx,
-	                               IntPtr k);
+		                                     LuaNativeFunction k);
 	    // #define lua_call(L,n,r)     lua_callk(L, (n), (r), 0, NULL)
 		public static void  lua_call(IntPtr L, int nargs, int nresults)
 		{
-			lua_callk (L, nargs, nresults, 0, IntPtr.Zero);
+			lua_callk (L, nargs, nresults, 0, null);
 		}
 
 	    [DllImport(LUA_DLL)]
@@ -233,11 +239,11 @@ namespace Lua52
 
 	    [DllImport(LUA_DLL)]
 	    public static extern int   lua_pcallk(IntPtr L, int nargs, int nresults, int errfunc,
-	                                int ctx, IntPtr k);
+		                                      int ctx, LuaNativeFunction k);
 	    // #define lua_pcall(L,n,r,f)  lua_pcallk(L, (n), (r), (f), 0, NULL)
 		public static int   lua_pcall(IntPtr L, int nargs, int nresults, int errfunc)
 		{
-			return lua_pcallk (L, nargs, nresults, errfunc,0,IntPtr.Zero);
+			return lua_pcallk (L, nargs, nresults, errfunc,0, null);
 		}
 
 	    [DllImport(LUA_DLL)]
@@ -253,11 +259,11 @@ namespace Lua52
 	    */
 	    [DllImport(LUA_DLL)]
 	    public static extern int  lua_yieldk(IntPtr L, int nresults, int ctx,
-	                               IntPtr k);
+	                               LuaNativeFunction k);
 	    // #define lua_yield(L,n)      lua_yieldk(L, (n), 0, NULL)
 		public static int  lua_yield(IntPtr L, int nresults)
 		{
-			return lua_yieldk (L, nresults, 0, IntPtr.Zero);
+			return lua_yieldk (L, nresults, 0, null);
 		}
 	    [DllImport(LUA_DLL)]
 	    public static extern int  lua_resume(IntPtr L, IntPtr from, int narg);
@@ -344,14 +350,14 @@ namespace Lua52
 		}
 
 	    // #define lua_register(L,n,f) (lua_pushcfunction(L, (f)), lua_setglobal(L, (n)))
-		public static void  lua_register(IntPtr L, string n , IntPtr f)
+		public static void  lua_register(IntPtr L, string n , LuaNativeFunction f)
 		{
 			lua_pushcfunction (L, f);
 			lua_setglobal (L, n);
 		}
 
 	    // #define lua_pushcfunction(L,f)  lua_pushcclosure(L, (f), 0)
-		public static void  lua_pushcfunction(IntPtr L, IntPtr fn)
+		public static void  lua_pushcfunction(IntPtr L, LuaNativeFunction fn)
 		{
 			lua_pushcclosure(L, fn, 0);
 		}
@@ -540,7 +546,7 @@ namespace Lua52
 
 	    [DllImport(LUA_DLL)]
 	    public static extern void luaL_requiref(IntPtr L, string modname,
-	                                     IntPtr openf, int glb);
+	                                     LuaNativeFunction openf, int glb);
 
 	    /*
 	    ** ===============================================================
@@ -556,26 +562,76 @@ namespace Lua52
 
 	    // #define luaL_argcheck(L, cond,numarg,extramsg)  \
 	    //         ((void)((cond) || luaL_argerror(L, (numarg), (extramsg))))
+
 	    // #define luaL_checkstring(L,n)   (luaL_checklstring(L, (n), NULL))
+		public static string luaL_checkstring (IntPtr L, int numArg)
+		{
+			uint l;
+			return luaL_checklstring (L, numArg, out l);
+		}
 	    // #define luaL_optstring(L,n,d)   (luaL_optlstring(L, (n), (d), NULL))
+		public static string luaL_optstring(IntPtr L, int numArg,string def)
+		{
+			uint l;
+			return luaL_optlstring(L, numArg, def, out l);
+		}
 	    // #define luaL_checkint(L,n)  ((int)luaL_checkinteger(L, (n)))
+		public static int luaL_checkint(IntPtr L, int numArg)
+		{
+			return luaL_checkinteger(L, numArg);
+		}
 	    // #define luaL_optint(L,n,d)  ((int)luaL_optinteger(L, (n), (d)))
+		public static int luaL_optint(IntPtr L, int nArg, int def)
+		{
+			return luaL_optinteger( L, nArg, def);
+		}
 	    // #define luaL_checklong(L,n) ((long)luaL_checkinteger(L, (n)))
+		public static long luaL_checklong(IntPtr L, int numArg)
+		{
+			return (long)luaL_checkinteger(L, numArg);
+		}
 	    // #define luaL_optlong(L,n,d) ((long)luaL_optinteger(L, (n), (d)))
+		public static long luaL_optlong(IntPtr L, int nArg, int def)
+		{
+			return (long)luaL_optinteger( L, nArg, def);
+		}
 
 	    // #define luaL_typename(L,i)  lua_typename(L, lua_type(L,(i)))
+		public static string luaL_typename(IntPtr L, int tp)
+		{
+			return lua_typename( L, lua_type(L,tp));
+		}
 
 	    // #define luaL_dofile(L, fn) \
 	    //     (luaL_loadfile(L, fn) || lua_pcall(L, 0, LUA_MULTRET, 0))
+		public static void luaL_dofile(IntPtr L, string filename)
+		{
+			luaL_loadfile(L, filename);
+			lua_pcall (L, 0, LUA_MULTRET, 0);
+		}
 
 	    // #define luaL_dostring(L, s) \
 	    //     (luaL_loadstring(L, s) || lua_pcall(L, 0, LUA_MULTRET, 0))
+		public static void luaL_dostring(IntPtr L, string s)
+		{
+			luaL_loadstring(L, s);
+			lua_pcall (L, 0, LUA_MULTRET, 0);
+		}
 
 	    // #define luaL_getmetatable(L,n)  (lua_getfield(L, LUA_REGISTRYINDEX, (n)))
+		public static void  luaL_getmetatable(IntPtr L, string k)
+		{
+			lua_getfield( L, LUA_REGISTRYINDEX, k);
+		}
 
 	    // #define luaL_opt(L,f,n,d)   (lua_isnoneornil(L,(n)) ? (d) : f(L,(n)))
 
 	    // #define luaL_loadbuffer(L,s,sz,n)   luaL_loadbufferx(L,s,sz,n,NULL)
+		public static int luaL_loadbuffer(IntPtr L, string buff, uint sz,
+		                                          string name)
+		{
+			return luaL_loadbufferx( L, buff, sz, name, null );
+		}
 
 
 	    /*
