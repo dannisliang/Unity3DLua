@@ -149,7 +149,7 @@ namespace Lua52
 					Lua52Native.lua_pop(L, 1);
 					Lua52Native.lua_createtable(L, 0, 0);
 					Lua52Native.lua_pushstring(L, path[path.Length - 1]);
-					Lua52Native.lua_pushvalue(L, -2);           
+					Lua52Native.lua_pushvalue(L, -2);
 					Lua52Native.lua_rawset(L, -4);
 				}
 			}
@@ -167,7 +167,8 @@ namespace Lua52
 					Lua52Native.lua_rawset(L, Lua52Native.LUA_REGISTRYINDEX);
 				}
 			}
-			
+
+			//put the table wich you want , insert on the old top +1
 			Lua52Native.lua_insert(L, oldTop + 1);
 			Lua52Native.lua_settop(L, oldTop + 1);
 		}
@@ -218,33 +219,33 @@ namespace Lua52
 			//set methods
 			if(methods != null)
 				for(int i = 0 ; i<methods.Length ; i++)
-			{
-				Lua52Native.lua_pushstring(lua , methods[i].name);
-				Lua52Native.lua_pushcfunction(lua , methods[i].func);
-				Lua52Native.lua_rawset(lua , -3);
-			}
+				{
+					Lua52Native.lua_pushstring(lua , methods[i].name);
+					Lua52Native.lua_pushcfunction(lua , methods[i].func);
+					Lua52Native.lua_rawset(lua , -3);
+				}
 			
 			//set fields
 			if(fields != null)
 				for(int i = 0 ; i<fields.Length ; i++)
-			{
-				Lua52Native.lua_pushstring(lua , fields[i].name);
-				Lua52Native.lua_createtable(lua , 2 , 2);
-				//set getter in field table
-				if(fields[i].getter != null)
 				{
-					Lua52Native.lua_pushcfunction(lua,fields[i].getter);
-					Lua52Native.lua_rawseti(lua , -2 , 1);
+					Lua52Native.lua_pushstring(lua , fields[i].name);
+					Lua52Native.lua_createtable(lua , 2 , 2);
+					//set getter in field table
+					if(fields[i].getter != null)
+					{
+						Lua52Native.lua_pushcfunction(lua,fields[i].getter);
+						Lua52Native.lua_rawseti(lua , -2 , 1);
+					}
+					//set setter in field table
+					if(fields[i].setter != null)
+					{
+						Lua52Native.lua_pushcfunction(lua , fields[i].setter);
+						Lua52Native.lua_rawseti(lua , -2 , 2);
+					}
+					//set field table in table which create at front
+					Lua52Native.lua_rawset(lua , -3);
 				}
-				//set setter in field table
-				if(fields[i].setter != null)
-				{
-					Lua52Native.lua_pushcfunction(lua , fields[i].setter);
-					Lua52Native.lua_rawseti(lua , -2 , 2);
-				}
-				//set field table in table which create at front
-				Lua52Native.lua_rawset(lua , -3);
-			}
 			
 			//set meta table
 			Lua52Native.lua_setmetatable (lua, -2);
