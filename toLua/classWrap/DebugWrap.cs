@@ -25,7 +25,7 @@ public class DebugWrap
 
 	public static void Regist()
 	{
-		toLua.LuaEngine.sInstance.RegisterClass ("Debug", typeof(Debug), methods, null, "");
+//		toLua.LuaEngine.sInstance.RegisterClass ("Debug", typeof(Debug), methods, null, "");
 	}
 
 	static int Log(KeraLua.LuaState luastate)
