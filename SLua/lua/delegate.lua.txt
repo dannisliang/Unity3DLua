@@ -1,0 +1,76 @@
+
+
+
+function xx()
+	print(2,path,flag)
+	--multi return for out flag parameter
+	return true,"http://www.sineysoft.com",1,32,11
+end
+
+
+self={}
+
+function self.func()
+	print("callback from func")
+	return 520
+end
+
+function self.action(a,b)
+	print("callback from action")
+	print(a,b)
+end
+
+function self.actionD()
+	return function(a,b)
+		print("callback from actionD")
+		-- here you can access self
+		print(self,a,b)
+	end
+end
+
+function main()
+	local h=HelloWorld()
+	h.d=function(path,flag)
+		print(1,path,flag)
+		--multi return for out flag parameter
+		return true,"http://www.sineysoft.com",1,32,11
+	end
+
+	-- add handler
+	h.d={"+=",xx}
+
+	h.s=function(path,go)
+		print(path,go.name)
+	end
+
+	-- call delegation
+	h:callD()
+
+	-- remove handler
+	h.d={"-=",xx}
+
+	h:callD()
+
+	-- remove all
+	h.d=nil
+	h.s=nil
+
+	-- call delegation again
+	h:callD()	
+
+
+	Deleg.testFunc( self.func )
+	Deleg.testAction( self.action )
+
+	-- add
+	Deleg.daction = {"+=",self.actionD()}
+	Deleg.callDAction()
+
+	print("delegate removed")
+	
+	-- remove
+	Deleg.daction = {"-=",self.actionD()}
+	Deleg.callDAction()
+end
+
+

@@ -23,16 +23,17 @@ namespace Lua52
             Lua52Native.lua_pushboolean(state, 1);
             Debug.Log(Lua52Native.lua_type(state , -1));
             Debug.Log ("type str " + Lua52Native.luaL_typename(state , -1));
+            Debug.Log("bool is " + Lua52Native.lua_toboolean(state , -1));
 
-            Lua52Native.lua_pushnumber(state, 0.4f);
+            Lua52Native.lua_pushnumber(state, 0.4);
             Debug.Log(Lua52Native.lua_type(state , -1));
             Debug.Log ("type str " + Lua52Native.luaL_typename(state , -1));
+            Debug.Log("num is " + Lua52Native.lua_tonumber(state , -1));
 
             Lua52Native.lua_pushstring(state , "ok");
             Debug.Log(Lua52Native.lua_type(state , -1));
             Debug.Log ("type str " + Lua52Native.luaL_typename(state , -1));
-			string str = Lua52Native.lua_tostring(state , -1);
-            Debug.Log("str is " + str);
+            Debug.Log("str is " + Lua52Native.lua_tostring(state , -1));
 
             Debug.Log ( "num in stack " + Lua52Native.lua_gettop(state));
         }

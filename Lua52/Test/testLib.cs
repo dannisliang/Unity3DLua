@@ -21,11 +21,11 @@ public class testLib : MonoBehaviour
 		ip = Lua52Native.luaL_newstate ();
 		Lua52Native.luaL_openlibs (ip);
 
-		BaseTest.TestPush(ip);
+		// BaseTest.TestPush(ip);
 
-		return;
+		// return;
 		string str = @"
-		--require Main
+		-- require 'Main'
 		local a = 233
 		local b = 233
 		return a+b
@@ -39,15 +39,15 @@ public class testLib : MonoBehaviour
 		path += Application.dataPath + "/App/Scripts/lua/?.lua";
 		Lua52Native.lua_pop (ip, 1);
 		Debug.Log (Lua52Native.lua_gettop (ip));
-////		Lua52Native.lua_pushstring (ip,"package.path");
+		// Lua52Native.lua_pushstring (ip,"package.path");
 		Debug.Log (path);
 		Lua52Native.lua_pushstring (ip, path);
 		// Debug.Log (Lua52Native.lua_gettop (ip));
-		// Lua52Native.lua_setglobal(ip, "package.path");
-		// Lua52Native.lua_settop (ip,0);
+		Lua52Native.lua_setglobal(ip, "package.path");
+		Lua52Native.lua_settop (ip,0);
 
 		int pos = Lua52Native.luaL_loadstring (ip , str);
-		Lua52Native.lua_callk (ip, 0, -1, 0, null);
+		Lua52Native.lua_callk (ip, 0, -1, 0, IntPtr.Zero);
 		int top = Lua52Native.lua_gettop (ip);
 		Debug.Log ("top : " + top);
 

@@ -1,8 +1,4 @@
-﻿
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System;
 using System.Text;
 using System.Runtime.InteropServices;
 
@@ -15,7 +11,7 @@ using System.Runtime.InteropServices;
 
 namespace Lua52
 {
-	public enum LuaType
+	public enum LuaType : int
 	{
 		LUA_TNONE = -1,
 		LUA_TNIL = 0,
@@ -29,14 +25,51 @@ namespace Lua52
 		LUA_TTHREAD	= 8
 	}
 
-	public delegate int LuaNativeFunction (IntPtr luaState);
+	public enum LuaTypeOP : int
+	{
+		LUA_OPADD = 0,
+	    LUA_OPSUB = 1,
+	    LUA_OPMUL = 2,
+	    LUA_OPDIV = 3,
+	    LUA_OPMOD = 4,
+	    LUA_OPPOW = 5,
+	    LUA_OPUNM = 6
+	}
+
+	public enum LuaGCOption : int
+	{
+		LUA_GCSTOP = 0,
+	    LUA_GCRESTART = 1,
+	    LUA_GCCOLLECT = 2,
+	    LUA_GCCOUNT = 3,
+	    LUA_GCCOUNTB = 4,
+	    LUA_GCSTEP = 5,
+	    LUA_GCSETPAUSE = 6,
+	    LUA_GCSETSTEPMUL = 7,
+	    LUA_GCSETMAJORINC = 8,
+	    LUA_GCISRUNNING = 9,
+	    LUA_GCGEN = 10,
+	    LUA_GCINC = 11
+	}
+
+	public enum LuaThreadStatus : int
+    {
+    	LUA_OK = 0,
+        LUA_YIELD = 1,
+        LUA_ERRRUN = 2,
+        LUA_ERRSYNTAX = 3,
+        LUA_ERRMEM = 4,
+        LUA_ERRGCMM = 5,
+        LUA_ERRERR = 6,
+    }
+
+	public delegate int LuaNativeFunction(IntPtr luaState);
 
 	public class Lua52Native
 	{
 		private const double LUA_VERSION_NUM = 502;
 
-//		public const int LUA_REGISTRYINDEX = -1001000;
-		public const int LUA_REGISTRYINDEX = -16000;
+		public const int LUA_REGISTRYINDEX = -1001000;
 
 		public const string LUA_ENV = "_ENV";
 
@@ -58,7 +91,7 @@ namespace Lua52
 	    [DllImport(LUA_DLL , CallingConvention = CallingConvention.Cdecl)]
 	    public static extern IntPtr lua_newthread (IntPtr L);
 	    [DllImport(LUA_DLL , CallingConvention = CallingConvention.Cdecl)]
-		public static extern LuaNativeFunction lua_atpanic(IntPtr L, LuaNativeFunction panicf);
+		public static extern void lua_atpanic(IntPtr L, LuaNativeFunction panicf);
 
 	    [DllImport(LUA_DLL , CallingConvention = CallingConvention.Cdecl , EntryPoint = "lua_version")]
 	    public static extern double lua_version(IntPtr L);
@@ -118,7 +151,7 @@ namespace Lua52
 	    [DllImport(LUA_DLL , CallingConvention = CallingConvention.Cdecl)]
 	    public static extern int lua_rawlen(IntPtr L, int idx);
 	    [DllImport(LUA_DLL , CallingConvention = CallingConvention.Cdecl)]
-		public static extern LuaNativeFunction lua_tocfunction(IntPtr L, int idx);
+		public static extern IntPtr lua_tocfunction(IntPtr L, int idx);
 	    [DllImport(LUA_DLL , CallingConvention = CallingConvention.Cdecl)]
 	    public static extern IntPtr lua_touserdata(IntPtr L, int idx);
 	    [DllImport(LUA_DLL , CallingConvention = CallingConvention.Cdecl)]
@@ -129,14 +162,6 @@ namespace Lua52
 	    /*
 	    ** Comparison and arithmetic functions
 	    */
-
-	    // #define LUA_OPADD   0   /* ORDER TM */
-	    // #define LUA_OPSUB   1
-	    // #define LUA_OPMUL   2
-	    // #define LUA_OPDIV   3
-	    // #define LUA_OPMOD   4
-	    // #define LUA_OPPOW   5
-	    // #define LUA_OPUNM   6
 
 	    [DllImport(LUA_DLL , CallingConvention = CallingConvention.Cdecl)]
 	    public static extern void  lua_arith(IntPtr L, int op);
@@ -164,7 +189,7 @@ namespace Lua52
 	    public static extern void lua_pushunsigned(IntPtr L, uint n);
 	    [DllImport(LUA_DLL , CallingConvention = CallingConvention.Cdecl , CharSet = CharSet.Ansi)]
 	    public static extern IntPtr lua_pushlstring(IntPtr L, string s, int l);
-	    [DllImport(LUA_DLL , CallingConvention = CallingConvention.Cdecl , CharSet = CharSet.Unicode)]
+	    [DllImport(LUA_DLL , CallingConvention = CallingConvention.Cdecl , CharSet = CharSet.Ansi)]
 	    public static extern IntPtr lua_pushstring(IntPtr L, string s);
 	    // [DllImport(LUA_DLL , CallingConvention = CallingConvention.Cdecl)]
 	    // public static extern const string lua_pushvfstring(IntPtr L, const string fmt,
@@ -172,7 +197,7 @@ namespace Lua52
 	    // [DllImport(LUA_DLL , CallingConvention = CallingConvention.Cdecl)]
 	    // public static extern const string lua_pushfstring(IntPtr L, const string fmt, ...);
 	    [DllImport(LUA_DLL , CallingConvention = CallingConvention.Cdecl)]
-		public static extern void  lua_pushcclosure(IntPtr L, LuaNativeFunction fn, int n);
+		public static extern void  lua_pushcclosure(IntPtr L, IntPtr fn, int n);
 	    [DllImport(LUA_DLL , CallingConvention = CallingConvention.Cdecl)]
 	    public static extern void  lua_pushboolean (IntPtr L, int b);
 	    [DllImport(LUA_DLL , CallingConvention = CallingConvention.Cdecl)]
@@ -230,11 +255,11 @@ namespace Lua52
 	    */
 	    [DllImport(LUA_DLL , CallingConvention = CallingConvention.Cdecl)]
 	    public static extern void  lua_callk(IntPtr L, int nargs, int nresults, int ctx,
-		                                     LuaNativeFunction k);
+		                                     IntPtr k);
 	    // #define lua_call(L,n,r)     lua_callk(L, (n), (r), 0, NULL)
 		public static void  lua_call(IntPtr L, int nargs, int nresults)
 		{
-			lua_callk (L, nargs, nresults, 0, null);
+			lua_callk (L, nargs, nresults, 0, IntPtr.Zero);
 		}
 
 	    [DllImport(LUA_DLL , CallingConvention = CallingConvention.Cdecl)]
@@ -242,11 +267,11 @@ namespace Lua52
 
 	    [DllImport(LUA_DLL , CallingConvention = CallingConvention.Cdecl)]
 	    public static extern int   lua_pcallk(IntPtr L, int nargs, int nresults, int errfunc,
-		                                      int ctx, LuaNativeFunction k);
+		                                      int ctx, IntPtr k);
 	    // #define lua_pcall(L,n,r,f)  lua_pcallk(L, (n), (r), (f), 0, NULL)
 		public static int   lua_pcall(IntPtr L, int nargs, int nresults, int errfunc)
 		{
-			return lua_pcallk (L, nargs, nresults, errfunc,0, null);
+			return lua_pcallk (L, nargs, nresults, errfunc,0, IntPtr.Zero);
 		}
 
 	    [DllImport(LUA_DLL , CallingConvention = CallingConvention.Cdecl , CharSet = CharSet.Ansi)]
@@ -262,11 +287,11 @@ namespace Lua52
 	    */
 	    [DllImport(LUA_DLL , CallingConvention = CallingConvention.Cdecl)]
 	    public static extern int  lua_yieldk(IntPtr L, int nresults, int ctx,
-	                               LuaNativeFunction k);
+	                               IntPtr k);
 	    // #define lua_yield(L,n)      lua_yieldk(L, (n), 0, NULL)
 		public static int  lua_yield(IntPtr L, int nresults)
 		{
-			return lua_yieldk (L, nresults, 0, null);
+			return lua_yieldk (L, nresults, 0, IntPtr.Zero);
 		}
 	    [DllImport(LUA_DLL , CallingConvention = CallingConvention.Cdecl)]
 	    public static extern int  lua_resume(IntPtr L, IntPtr from, int narg);
@@ -276,19 +301,6 @@ namespace Lua52
 	    /*
 	    ** garbage-collection function and options
 	    */
-
-	    // #define LUA_GCSTOP      0
-	    // #define LUA_GCRESTART       1
-	    // #define LUA_GCCOLLECT       2
-	    // #define LUA_GCCOUNT     3
-	    // #define LUA_GCCOUNTB        4
-	    // #define LUA_GCSTEP      5
-	    // #define LUA_GCSETPAUSE      6
-	    // #define LUA_GCSETSTEPMUL    7
-	    // #define LUA_GCSETMAJORINC   8
-	    // #define LUA_GCISRUNNING     9
-	    // #define LUA_GCGEN       10
-	    // #define LUA_GCINC       11
 
 	    [DllImport(LUA_DLL , CallingConvention = CallingConvention.Cdecl)]
 	    public static extern int lua_gc (IntPtr L, int what, int data);
@@ -360,8 +372,9 @@ namespace Lua52
 		}
 
 	    // #define lua_pushcfunction(L,f)  lua_pushcclosure(L, (f), 0)
-		public static void  lua_pushcfunction(IntPtr L, LuaNativeFunction fn)
+		public static void  lua_pushcfunction(IntPtr L, LuaNativeFunction func)
 		{
+			IntPtr fn = Marshal.GetFunctionPointerForDelegate(func);
 			lua_pushcclosure(L, fn, 0);
 		}
 
@@ -550,7 +563,7 @@ namespace Lua52
 
 	    [DllImport(LUA_DLL , CallingConvention = CallingConvention.Cdecl , CharSet = CharSet.Ansi)]
 	    public static extern void luaL_requiref(IntPtr L, string modname,
-	                                     LuaNativeFunction openf, int glb);
+	                                     IntPtr openf, int glb);
 
 	    /*
 	    ** ===============================================================
