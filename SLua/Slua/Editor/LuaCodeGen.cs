@@ -190,15 +190,37 @@ public class LuaCodeGen : MonoBehaviour
     [MenuItem("SLua/Make custom")]
     static public void Custom()
     {
+        List<string> assemblyList = new List<string>();
         List<Type> cust = new List<Type>{
- 			typeof(HelloWorld),
-            typeof(Custom),
             typeof(System.Func<int>),
             typeof(System.Action<int,string>),
-            typeof(System.Action<int, Dictionary<int,object>>),
-            typeof(Deleg),
-            // your custom class here
-		};
+            typeof(System.Action<int, Dictionary<int,object>>)
+        };
+
+        assemblyList.Add("Assembly-CSharp");
+        foreach( string assemblyItem in assemblyList )
+        {
+            Assembly assembly = Assembly.Load(assemblyItem);
+            Type[] types = assembly.GetExportedTypes();
+
+            foreach (Type t in types)
+            {
+                if( t.GetCustomAttributes(typeof(CustomLuaClassAttribute),false).Length > 0 )
+                {
+                    cust.Add(t);
+                }
+            }
+        }
+
+  //       List<Type> cust = new List<Type>{
+ 	// 		typeof(HelloWorld),
+  //           typeof(Custom),
+  //           typeof(System.Func<int>),
+  //           typeof(System.Action<int,string>),
+  //           typeof(System.Action<int, Dictionary<int,object>>),
+  //           typeof(Deleg),
+  //           // your custom class here
+		// };
 
         List<Type> exports = new List<Type>();
         string oldpath = path;
@@ -311,6 +333,11 @@ class CodeGenerator
 
     public bool Generate(Type t)
     {
+        if( !Directory.Exists(LuaCodeGen.path) )
+        {
+            Directory.CreateDirectory(LuaCodeGen.path);
+        }
+
         if ((!t.IsGenericType && !IsObsolete(t) && !typeof(YieldInstruction).IsAssignableFrom(t))
             || (t.BaseType!=null && t.BaseType==typeof(System.MulticastDelegate)))
         {
@@ -971,7 +998,7 @@ namespace SLua
 
                     for (int k = 0; k < pars.Length; k++)
                     {
-                        CheckArgument(file, pars[k].ParameterType, k, 1, false);
+                        CheckArgument(file, pars[k].ParameterType, k, 1, false, false);
                     }
                     Write(file, "o=new {0}({1});", FullName(t), FuncCall(ci));
                     Write(file, "pushObject(l,o);");
@@ -1168,6 +1195,9 @@ namespace SLua
             argIndex++;
         }
 
+        
+
+
         for (int n=0; n < pars.Length; n++)
         {
             ParameterInfo p = pars[n];
@@ -1176,7 +1206,12 @@ namespace SLua
             {
                 hasref = true;
             }
-            CheckArgument(file, p.ParameterType, n, argIndex, p.IsOut);
+
+            bool hasParams = false;
+            if (pars.Length > 0)
+                hasParams = pars[n].GetCustomAttributes(typeof(ParamArrayAttribute), false).Length > 0;
+            
+            CheckArgument(file, p.ParameterType, n, argIndex, p.IsOut, hasParams);
         }
 
         string ret = "";
@@ -1304,7 +1339,7 @@ namespace SLua
         if (fmt.EndsWith("{")) indent++;
     }
 
-    private void CheckArgument(StreamWriter file, Type t, int n,int argstart, bool isout)
+    private void CheckArgument(StreamWriter file, Type t, int n,int argstart, bool isout, bool isparams)
     {
         Write(file, "{0} a{1};", TypeDecl(t), n + 1);
 
@@ -1314,6 +1349,8 @@ namespace SLua
                 Write(file, "checkEnum(l,{0},out a{1});", n + argstart, n + 1);
             else if (t.BaseType == typeof(System.MulticastDelegate))
                 Write(file, "checkDelegate(l,{0},out a{1});", n + argstart, n + 1);
+            else if (isparams)
+                Write(file, "checkParams(l,{0},out a{1});", n + argstart, n + 1);
             else
                 Write(file, "checkType(l,{0},out a{1});", n + argstart, n + 1);
         }
