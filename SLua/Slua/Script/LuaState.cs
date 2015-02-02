@@ -202,7 +202,7 @@ namespace SLua
         IntPtr L;
 
         public delegate byte[] LoaderDelegate(string fn);
-        public static LoaderDelegate loaderDelegate;
+        static public LoaderDelegate loaderDelegate;
 
         Queue<int> refQueue;
 

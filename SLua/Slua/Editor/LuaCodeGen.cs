@@ -194,7 +194,7 @@ public class LuaCodeGen : MonoBehaviour
         List<Type> cust = new List<Type>{
             typeof(System.Func<int>),
             typeof(System.Action<int,string>),
-            typeof(System.Action<int, Dictionary<int,object>>)
+            typeof(System.Action<int, Dictionary<int,object>>),
         };
 
         assemblyList.Add("Assembly-CSharp");
@@ -212,15 +212,20 @@ public class LuaCodeGen : MonoBehaviour
             }
         }
 
-  //       List<Type> cust = new List<Type>{
- 	// 		typeof(HelloWorld),
-  //           typeof(Custom),
-  //           typeof(System.Func<int>),
-  //           typeof(System.Action<int,string>),
-  //           typeof(System.Action<int, Dictionary<int,object>>),
-  //           typeof(Deleg),
-  //           // your custom class here
-		// };
+        assemblyList.Clear();
+        assemblyList.Add("DOTween");
+        assemblyList.Add("DOTween43");
+        assemblyList.Add("DOTween46");
+        foreach( string assemblyItem in assemblyList )
+        {
+            Assembly assembly = Assembly.Load(assemblyItem);
+            Type[] types = assembly.GetExportedTypes();
+
+            foreach (Type t in types)
+            {
+                cust.Add(t);
+            }
+        }
 
         List<Type> exports = new List<Type>();
         string oldpath = path;
@@ -337,7 +342,7 @@ class CodeGenerator
         {
             Directory.CreateDirectory(LuaCodeGen.path);
         }
-
+        
         if ((!t.IsGenericType && !IsObsolete(t) && !typeof(YieldInstruction).IsAssignableFrom(t))
             || (t.BaseType!=null && t.BaseType==typeof(System.MulticastDelegate)))
         {

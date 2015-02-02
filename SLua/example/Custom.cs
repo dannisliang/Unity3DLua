@@ -5,7 +5,6 @@ using LuaInterface;
 using SLua;
 using System;
 
-
 [CustomLuaClassAttribute]
 public class Custom : MonoBehaviour {
 
