@@ -5,7 +5,7 @@ using SLua;
 using System;
 using LuaInterface;
 
-[CustomLuaClassAttribute]
+[CustomLuaClass]
 public class HelloWorld   {
 
 	static public void say() {
@@ -127,4 +127,24 @@ public class HelloWorld   {
             Debug.Log(args[n]);
         }
     }
+
+    [DoNotToLua]
+    static public void dontexport()
+    {
+        
+    }
+
+    [DoNotToLua]
+    public int a;
+
+    [DoNotToLua]
+    public int A
+    {
+        get
+        {
+            return a;
+        }
+    }
+
+    internal int b;
 }

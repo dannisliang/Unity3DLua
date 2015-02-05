@@ -190,46 +190,53 @@ public class LuaCodeGen : MonoBehaviour
     [MenuItem("SLua/Make custom")]
     static public void Custom()
     {
-        List<string> assemblyList = new List<string>();
+        ClearCustom();
+
         List<Type> cust = new List<Type>{
+            typeof(System.Action),
             typeof(System.Func<int>),
             typeof(System.Action<int,string>),
             typeof(System.Action<int, Dictionary<int,object>>),
+            typeof(iTween),
+            typeof(LuaUtil),
         };
 
-        assemblyList.Add("Assembly-CSharp");
-        foreach( string assemblyItem in assemblyList )
-        {
-            Assembly assembly = Assembly.Load(assemblyItem);
-            Type[] types = assembly.GetExportedTypes();
+        // export self-dll
+         Assembly assembly = Assembly.Load("Assembly-CSharp");
+         Type[] types = assembly.GetExportedTypes();
+ 
+         foreach (Type t in types)
+         {
+             if (t.GetCustomAttributes(typeof(CustomLuaClassAttribute), false).Length > 0)
+             {
+                 cust.Add(t);
+             }
+         }
 
-            foreach (Type t in types)
-            {
-                if( t.GetCustomAttributes(typeof(CustomLuaClassAttribute),false).Length > 0 )
-                {
-                    cust.Add(t);
-                }
-            }
-        }
+        // // export 3rd dll
+        // List<string> assemblyList = new List<string>();
+        // assemblyList.Add("NGUI");
+        
+        // foreach( string assemblyItem in assemblyList )
+        // {
+        //     assembly = Assembly.Load(assemblyItem);
+        //     types = assembly.GetExportedTypes();
 
-        assemblyList.Clear();
-        assemblyList.Add("DOTween");
-        assemblyList.Add("DOTween43");
-        assemblyList.Add("DOTween46");
-        foreach( string assemblyItem in assemblyList )
-        {
-            Assembly assembly = Assembly.Load(assemblyItem);
-            Type[] types = assembly.GetExportedTypes();
-
-            foreach (Type t in types)
-            {
-                cust.Add(t);
-            }
-        }
+        //     foreach (Type t in types)
+        //     {
+        //         cust.Add(t);
+        //     }
+        // }
 
         List<Type> exports = new List<Type>();
         string oldpath = path;
         path += "Custom/";
+
+        if (!Directory.Exists(path))
+        {
+            Directory.CreateDirectory(path);
+        }
+
         foreach (Type t in cust)
         {
             if (Generate(t))
@@ -361,12 +368,12 @@ class CodeGenerator
                     if (t.ContainsGenericParameters)
                         return false;
 
-                    string fn = string.Format("Lua{0}_{1}.cs", GenericBaseName(t), _Name(GenericName(t)));
+                    string fn = string.Format("Lua{0}_{1}.cs", _Name(GenericBaseName(t)), _Name(GenericName(t)));
                     f = LuaCodeGen.path + fn;
                 }
                 else
                 {
-                    f = LuaCodeGen.path + "LuaDelegate_" + t.Name + ".cs";
+                    f = LuaCodeGen.path + "LuaDelegate_" + _Name(t.FullName) + ".cs";
                 }
                 StreamWriter file = new StreamWriter(f, false, Encoding.UTF8);
                 WriteDelegate(t, file);
@@ -665,7 +672,6 @@ namespace SLua
 
     private void WriteFunction(Type t, StreamWriter file, bool writeStatic=false)
     {
-        Dictionary<string, int> renamefunc = new Dictionary<string, int>();
         BindingFlags bf = BindingFlags.Public | BindingFlags.DeclaredOnly;
         if (writeStatic)
             bf |= BindingFlags.Static;
@@ -673,20 +679,6 @@ namespace SLua
             bf |= BindingFlags.Instance;
 
         MethodInfo[] members = t.GetMethods( bf );
-        foreach (MethodInfo mi in members)
-        {
-            string fn = writeStatic ? staticName(mi.Name) : mi.Name;
-
-            if (mi.MemberType == MemberTypes.Method 
-                && !funcname.Contains(fn) &&
-                !IsObsolete(mi) &&
-                isUsefullMethod(mi))
-            {
-                if (!renamefunc.ContainsKey(mi.Name)) renamefunc[mi.Name] = 0;
-                renamefunc[mi.Name] += 1;
-            }
-        }
-
         foreach (MethodInfo mi in members)
         {
             bool instanceFunc;
@@ -700,12 +692,13 @@ namespace SLua
 
             if (mi.MemberType == MemberTypes.Method
                 && !IsObsolete(mi)
+                && !DontExport(mi)
                 && !funcname.Contains(fn)
                 && isUsefullMethod(mi)
                 && !MemberInFilter(t, mi))
             {
                 WriteFunctionDec(file, fn);
-                WriteFunctionImpl(file, mi, t, renamefunc[mi.Name]);
+                WriteFunctionImpl(file, mi, t, bf);
                 funcname.Add(fn);
             }
         }
@@ -773,7 +766,7 @@ namespace SLua
             if (t.BaseType.Name.Contains("UnityEvent`1"))
                 Write(file, "createTypeMetatable(l,constructor, typeof({0}),typeof(LuaUnityEvent_{1}));", FullName(t), _Name(GenericName(t.BaseType)));
             else
-                Write(file, "createTypeMetatable(l,constructor, typeof({0}),typeof({1}));", FullName(t), FullName(t.BaseType));
+                Write(file, "createTypeMetatable(l,constructor, typeof({0}),typeof({1}));", FullName(t), TypeDecl(t.BaseType));
         }
         else
             Write(file, "createTypeMetatable(l,constructor, typeof({0}));", FullName(t));
@@ -819,6 +812,9 @@ namespace SLua
         FieldInfo[] fields = t.GetFields(BindingFlags.Static | BindingFlags.Public | BindingFlags.Instance|BindingFlags.DeclaredOnly);
         foreach (FieldInfo fi in fields)
         {
+            if (DontExport(fi))
+                continue;
+
 			PropPair pp = new PropPair();
             pp.isInstance = !fi.IsStatic;
 
@@ -881,7 +877,7 @@ namespace SLua
         PropertyInfo[] props = t.GetProperties(BindingFlags.Static | BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
         foreach (PropertyInfo fi in props)
         {
-            if (fi.Name == "Item" || IsObsolete(fi) || MemberInFilter(t,fi))
+            if (fi.Name == "Item" || IsObsolete(fi) || MemberInFilter(t,fi) || DontExport(fi))
                 continue;
 
             PropPair pp = new PropPair();
@@ -973,49 +969,68 @@ namespace SLua
         Write(file, "[MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]");
     }
 
+    ConstructorInfo[] GetValidConstructor(Type t)
+    {
+        List<ConstructorInfo> ret = new List<ConstructorInfo>();
+        ConstructorInfo[] cons = t.GetConstructors();
+        foreach (ConstructorInfo ci in cons)
+        {
+                ParameterInfo[] pars = ci.GetParameters();
+                if (/*!ContainGeneric(pars) &&*/ !IsObsolete(ci) && !DontExport(ci))
+                    ret.Add(ci);
+        }
+        return ret.ToArray();
+    }
+
+    bool DontExport(MemberInfo mi)
+    {
+        return mi.GetCustomAttributes(typeof(DoNotToLuaAttribute), false).Length > 0;
+    }
+
+
     private void WriteConstructor(Type t, StreamWriter file)
     {
         WriteFunctionAttr(file);
         Write(file, "static public int constructor(IntPtr l) {");
-        ConstructorInfo[] cons = t.GetConstructors();
+        ConstructorInfo[] cons = GetValidConstructor(t);
         if (cons.Length > 0)
         {
-            Write(file, "LuaDLL.lua_remove(l,1);");
+            if (cons.Length > 1)
+                Write(file, "int argc = LuaDLL.lua_gettop(l);");
             Write(file, "{0} o;", FullName(t));
             bool first = true;
             for (int n = 0; n < cons.Length; n++)
             {
                 ConstructorInfo ci = cons[n];
                 ParameterInfo[] pars = ci.GetParameters();
-                if (!containGeneric(pars) && !IsObsolete(ci))
+
+                if (cons.Length > 1)
                 {
-                    Write(file, "{0}(matchType(l,1{1})){{", first ? "if" : "else if", TypeDecl(pars));
-                    // pre-check is parameter is delegate
-                    for (int k = 0; k < pars.Length; k++)
-                    {
-                        if (IsNotSupport(pars[k].ParameterType))
-                        {
-                            NotSupport(file);
-
-                            break;
-                        }
-                    }
-
-                    for (int k = 0; k < pars.Length; k++)
-                    {
-                        CheckArgument(file, pars[k].ParameterType, k, 1, false, false);
-                    }
-                    Write(file, "o=new {0}({1});", FullName(t), FuncCall(ci));
-                    Write(file, "pushObject(l,o);");
-                    Write(file, "return 1;");
-                    Write(file, "}");
-                    first = false;
+                    if (isUniqueArgsCount(cons, ci))
+                        Write(file, "{0}(argc=={1}){{", first ? "if" : "else if", ci.GetParameters().Length + 1);
+                    else
+                        Write(file, "{0}(matchType(l,argc,2{1})){{", first ? "if" : "else if", TypeDecl(pars));
                 }
+
+                for (int k = 0; k < pars.Length; k++)
+                {
+                    CheckArgument(file, pars[k].ParameterType, k, 2, false, false);
+                }
+                Write(file, "o=new {0}({1});", FullName(t), FuncCall(ci));
+                Write(file, "pushObject(l,o);");
+                Write(file, "return 1;");
+                Write(file, "}");
+                first = false;
             }
+            
         }
-		Write(file, "LuaDLL.luaL_error(l,\"New object failed.\");");
-        Write(file, "return 0;");
-        Write(file, "}");
+
+        if (cons.Length!=1)
+        {
+            Write(file, "LuaDLL.luaL_error(l,\"New object failed.\");");
+            Write(file, "return 0;");
+            Write(file, "}");
+        }
     }
 
     private void NotSupport(StreamWriter file)
@@ -1051,12 +1066,12 @@ namespace SLua
 
     string GenericBaseName(Type t)
     {
-        string n = t.Name;
+        string n = t.FullName;
         if (n.IndexOf('`')>0)
         {
-            return n.Substring(0, n.IndexOf('`'));
+            n = n.Substring(0, n.IndexOf('`'));
         }
-        return n;
+        return n.Replace("+", ".");
     }
     string GenericName(Type t)
     {
@@ -1130,11 +1145,26 @@ namespace SLua
         
     }
 
-    void WriteFunctionImpl(StreamWriter file, MethodInfo m, Type t, int overridecount)
+    MethodBase[] GetMethods(Type t, string name, BindingFlags bf)
+    {
+        List<MethodBase> methods = new List<MethodBase>();
+        MemberInfo[] cons = t.GetMember(name,bf);
+        foreach (MemberInfo m in cons)
+        {
+            if (m.MemberType == MemberTypes.Method
+                && !IsObsolete(m)
+                && !DontExport(m)
+                && isUsefullMethod((MethodInfo)m) )
+                methods.Add((MethodBase)m);
+        }
+        return methods.ToArray();
+    }
+
+    void WriteFunctionImpl(StreamWriter file, MethodInfo m, Type t, BindingFlags bf)
     {
         Write(file, "try{");
-
-        if (overridecount == 1) // no override function
+        MethodBase[] cons = GetMethods(t, m.Name, bf);
+        if (cons.Length == 1) // no override function
         {
             if (isUsefullMethod(m) && !m.ReturnType.ContainsGenericParameters && !m.ContainsGenericParameters) // don't support generic method
                 WriteFunctionCall(m, file, t);
@@ -1146,7 +1176,8 @@ namespace SLua
         }
         else // 2 or more override function
         {
-            MemberInfo[] cons = t.GetMember(m.Name);
+            Write(file, "int argc = LuaDLL.lua_gettop(l);");
+
             bool first = true;
             for (int n = 0; n < cons.Length; n++)
             {
@@ -1155,10 +1186,14 @@ namespace SLua
                     MethodInfo mi = cons[n] as MethodInfo;
 
                     ParameterInfo[] pars = mi.GetParameters();
-                    if (isUsefullMethod(mi) && !mi.ReturnType.ContainsGenericParameters && !containGeneric(pars)) // don't support generic method
+                    if (isUsefullMethod(mi) 
+                        && !mi.ReturnType.ContainsGenericParameters 
+                        /*&& !ContainGeneric(pars)*/) // don't support generic method
                     {
-
-                        Write(file, "{0}(matchType(l,{1}{2})){{", first ? "if" : "else if", mi.IsStatic ? 1 : 2, TypeDecl(pars));
+                        if (isUniqueArgsCount(cons, mi))
+                            Write(file, "{0}(argc=={1}){{", first ? "if" : "else if", mi.IsStatic?mi.GetParameters().Length:mi.GetParameters().Length+1);
+                        else
+                            Write(file, "{0}(matchType(l,argc,{1}{2})){{", first ? "if" : "else if", mi.IsStatic ? 1 : 2, TypeDecl(pars));
                         WriteFunctionCall(mi, file, t);
                         Write(file, "}");
                         first = false;
@@ -1176,7 +1211,18 @@ namespace SLua
         Write(file, "}");
     }
 
-    bool containGeneric(ParameterInfo[] pars)
+    bool isUniqueArgsCount(MethodBase[] cons, MethodBase mi)
+    {
+        foreach (MethodBase member in cons)
+        {
+            MethodBase m = (MethodBase)member;
+            if (m!=mi && mi.GetParameters().Length == m.GetParameters().Length)
+                return false;
+        }
+        return true;
+    }
+
+    bool ContainGeneric(ParameterInfo[] pars)
     {
         foreach (ParameterInfo p in pars)
         {
@@ -1316,12 +1362,18 @@ namespace SLua
 
     void WritePushValue(Type t, StreamWriter file)
     {
-        Write(file, "pushValue(l,ret);");
+        if(t.IsEnum)
+            Write(file, "pushEnum(l,(int)ret);");
+        else
+            Write(file, "pushValue(l,ret);");
     }
 
     void WritePushValue(Type t, StreamWriter file, string ret)
     {
-        Write(file, "pushValue(l,{0});", ret);
+        if(t.IsEnum)
+            Write(file, "pushEnum(l,(int){0});", ret);
+        else
+            Write(file, "pushValue(l,{0});", ret);
     }
 
 
@@ -1353,7 +1405,10 @@ namespace SLua
             if (t.IsEnum)
                 Write(file, "checkEnum(l,{0},out a{1});", n + argstart, n + 1);
             else if (t.BaseType == typeof(System.MulticastDelegate))
+            {
+                tryMake(t);
                 Write(file, "checkDelegate(l,{0},out a{1});", n + argstart, n + 1);
+            }
             else if (isparams)
                 Write(file, "checkParams(l,{0},out a{1});", n + argstart, n + 1);
             else
@@ -1377,7 +1432,23 @@ namespace SLua
 
     string TypeDecl(Type t)
     {
-        return RemoveRef(t.ToString(), false);
+        if (t.IsGenericType)
+        {
+            string ret = "";
+            ret += GenericBaseName(t);
+            ret += "<";
+            Type[] types = t.GetGenericArguments();
+            for (int n = 0; n < types.Length; n++)
+            {
+                ret += TypeDecl(types[n]);
+                if(n<types.Length-1)
+                    ret += ",";
+            }
+            ret += ">";
+            return ret;
+        }
+        else
+            return RemoveRef(t.ToString(), false);
     }
 
     string ExportName(Type t)

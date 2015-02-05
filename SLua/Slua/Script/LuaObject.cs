@@ -28,6 +28,24 @@ using LuaInterface;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
+[AttributeUsage(AttributeTargets.Class)]
+public class CustomLuaClassAttribute : System.Attribute
+{
+    public CustomLuaClassAttribute()
+    {
+        //
+    }
+}
+
+public class DoNotToLuaAttribute : System.Attribute
+{
+    public DoNotToLuaAttribute()
+    {
+        //
+    }
+}
+
+
 namespace SLua
 {
 
@@ -448,9 +466,9 @@ return index
             return true;
         }
 
-        public static bool matchType(IntPtr l, int from, params Type[] types)
+        public static bool matchType(IntPtr l, int total, int from, params Type[] types)
         {
-            if (LuaDLL.lua_gettop(l) - from + 1 != types.Length)
+            if (total - from + 1 != types.Length)
                 return false;
 
             for (int n = 0; n < types.Length; n++)
@@ -613,7 +631,7 @@ return index
         static internal bool checkType(IntPtr l, int p, out UInt64 v)
         {
 #if LUA_5_3
-            v = LuaDLL.luaL_checkinteger(l, p);
+            v = (UInt64)LuaDLL.luaL_checkinteger(l, p);
 #else
             v = (UInt64)LuaDLL.luaL_checknumber(l, p);
 #endif
@@ -678,7 +696,7 @@ return index
         }
 
         static internal bool checkType<T>(IntPtr l, int p, out T o) {
-            o = (T)checkObj(l, p);
+            o = (T)checkVar(l, p);
             return true;
         }
 
@@ -739,8 +757,8 @@ return index
                 }
                 return true;
             }
-            pars = null;
-            return false;
+            pars = new object[0];
+            return true;
         }
 
         static internal bool checkParams(IntPtr l, int p, out float[] pars)
@@ -755,8 +773,8 @@ return index
                 }
                 return true;
             }
-            pars = null;
-            return false;
+            pars = new float[0];
+            return true;
         }
 
         static internal bool checkParams(IntPtr l, int p, out int[] pars)
@@ -771,8 +789,8 @@ return index
                 }
                 return true;
             }
-            pars = null;
-            return false;
+            pars = new int[0];
+            return true;
         }
 
         static internal bool checkParams(IntPtr l, int p, out Vector2[] pars)
@@ -787,8 +805,8 @@ return index
                 }
                 return true;
             }
-            pars = null;
-            return false;
+            pars = new Vector2[0];
+            return true;
         }
 
         static internal bool checkParams(IntPtr l, int p, out string[] pars)
@@ -803,8 +821,8 @@ return index
                 }
                 return true;
             }
-            pars = null;
-            return false;
+            pars = new string[0];
+            return true;
         }
 
 		static internal object checkVar(IntPtr l,int p) {
@@ -920,18 +938,20 @@ return index
 
         internal static void pushValue(IntPtr l, object o)
         {
-            Type t = o.GetType();
-            if (t.IsEnum)
-            {
-                pushValue(l, (int)o);
-            }
-            else
-            {
-                pushObject(l, o);
-            }
+            pushObject(l, o);
         }
 
         internal static void pushValue(IntPtr l, object[] o)
+        {
+            LuaDLL.lua_newtable(l);
+            for (int n = 0; n < o.Length; n++)
+            {
+                pushValue(l, o[n]);
+                LuaDLL.lua_rawseti(l, -2, n + 1);
+            }
+        }
+
+        internal static void pushValue(IntPtr l, string[] o)
         {
             LuaDLL.lua_newtable(l);
             for (int n = 0; n < o.Length; n++)
@@ -1022,7 +1042,10 @@ return index
 //        }
 
 
-
+        internal static void pushEnum(IntPtr l, int e)
+        {
+            pushValue(l, e);
+        }
 
 
         internal static void pushVar(IntPtr l, object o)
@@ -1038,6 +1061,9 @@ return index
             {
                 case "Single":
                     LuaDLL.lua_pushnumber(l, (float)o);
+                    break;
+                case "Double":
+                    LuaDLL.lua_pushnumber(l, (double)o);
                     break;
                 case "Int32":
                 case "Uint32":
@@ -1068,6 +1094,8 @@ return index
                     break;
             }
         }
+
+
 
         internal static T checkSelf<T>(IntPtr l)
         {
