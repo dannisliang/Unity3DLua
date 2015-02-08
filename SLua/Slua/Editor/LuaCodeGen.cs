@@ -152,7 +152,8 @@ public class LuaCodeGen : MonoBehaviour
         List<string> noUseList = new List<string>
         {      
             "CoroutineTween",
-        };
+			"GraphicRebuildTracker",
+		};
 
         Assembly assembly = Assembly.Load("UnityEngine.UI");
         Type[] types = assembly.GetExportedTypes();
@@ -190,43 +191,40 @@ public class LuaCodeGen : MonoBehaviour
     [MenuItem("SLua/Make custom")]
     static public void Custom()
     {
-        ClearCustom();
-
+        
         List<Type> cust = new List<Type>{
-            typeof(System.Action),
             typeof(System.Func<int>),
             typeof(System.Action<int,string>),
             typeof(System.Action<int, Dictionary<int,object>>),
             typeof(iTween),
-            typeof(LuaUtil),
         };
 
         // export self-dll
-         Assembly assembly = Assembly.Load("Assembly-CSharp");
-         Type[] types = assembly.GetExportedTypes();
+        Assembly assembly = Assembly.Load("Assembly-CSharp");
+        Type[] types = assembly.GetExportedTypes();
  
-         foreach (Type t in types)
-         {
-             if (t.GetCustomAttributes(typeof(CustomLuaClassAttribute), false).Length > 0)
+        foreach (Type t in types)
+        {
+            if (t.GetCustomAttributes(typeof(CustomLuaClassAttribute), false).Length > 0)
              {
                  cust.Add(t);
              }
          }
 
-        // // export 3rd dll
-        // List<string> assemblyList = new List<string>();
-        // assemblyList.Add("NGUI");
+        // export 3rd dll
+        List<string> assemblyList = new List<string>();
+        //assemblyList.Add("NGUI"); 
         
-        // foreach( string assemblyItem in assemblyList )
-        // {
-        //     assembly = Assembly.Load(assemblyItem);
-        //     types = assembly.GetExportedTypes();
+        foreach( string assemblyItem in assemblyList )
+        {
+            assembly = Assembly.Load(assemblyItem);
+            types = assembly.GetExportedTypes();
 
-        //     foreach (Type t in types)
-        //     {
-        //         cust.Add(t);
-        //     }
-        // }
+            foreach (Type t in types)
+            {
+                cust.Add(t);
+            }
+        }
 
         List<Type> exports = new List<Type>();
         string oldpath = path;
@@ -298,6 +296,9 @@ class CodeGenerator
         "WWW.movie",
         "WebCamTexture.MarkNonReadable",
         "WebCamTexture.isReadable",
+		// i don't why below 2 functions missed in iOS platform
+		"Graphic.OnRebuildRequested",
+		"Text.OnRebuildRequested",
     };
 
     public static HashSet<string> InnerTypes = new HashSet<string>();
@@ -710,7 +711,7 @@ namespace SLua
         if (attrs.Length > 0)
         {
             MonoPInvokeCallbackAttribute p = attrs[0] as MonoPInvokeCallbackAttribute;
-            instanceFunc = p.instance;
+			instanceFunc = mi.GetCustomAttributes(typeof(StaticExportAttribute),false).Length==0;
             return true;
         }
         instanceFunc = true;
