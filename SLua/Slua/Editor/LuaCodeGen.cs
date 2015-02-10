@@ -196,16 +196,15 @@ public class LuaCodeGen : MonoBehaviour
             typeof(System.Func<int>),
             typeof(System.Action<int,string>),
             typeof(System.Action<int, Dictionary<int,object>>),
-            typeof(iTween),
         };
 
         // export self-dll
-        Assembly assembly = Assembly.Load("Assembly-CSharp");
-        Type[] types = assembly.GetExportedTypes();
+         Assembly assembly = Assembly.Load("Assembly-CSharp");
+         Type[] types = assembly.GetExportedTypes();
  
-        foreach (Type t in types)
-        {
-            if (t.GetCustomAttributes(typeof(CustomLuaClassAttribute), false).Length > 0)
+         foreach (Type t in types)
+         {
+             if (t.GetCustomAttributes(typeof(CustomLuaClassAttribute), false).Length > 0)
              {
                  cust.Add(t);
              }
@@ -429,6 +428,11 @@ namespace SLua
 				ua=null;
 				return op;
 			}
+            else if (LuaDLL.lua_isuserdata(l, p)==1)
+            {
+                ua = ($FN)checkObj(l, p);
+                return op;
+            }
             int r = LuaDLL.luaS_checkcallback(l, -1);
 			if(r<0) LuaDLL.luaL_error(l,""expect function"");
 			if(getCacheDelegate<$FN>(r,out ua))
@@ -475,7 +479,7 @@ namespace SLua
         }
 
 
-        Write(file, "LuaDLL.lua_pop(l, 1);");
+        Write(file, "LuaDLL.lua_settop(l, error-1);");
         if (mi.ReturnType != typeof(void))
             Write(file, "return ret;");
 
@@ -710,7 +714,6 @@ namespace SLua
         object[] attrs = mi.GetCustomAttributes(typeof(MonoPInvokeCallbackAttribute), false);
         if (attrs.Length > 0)
         {
-            MonoPInvokeCallbackAttribute p = attrs[0] as MonoPInvokeCallbackAttribute;
 			instanceFunc = mi.GetCustomAttributes(typeof(StaticExportAttribute),false).Length==0;
             return true;
         }
@@ -976,8 +979,7 @@ namespace SLua
         ConstructorInfo[] cons = t.GetConstructors();
         foreach (ConstructorInfo ci in cons)
         {
-                ParameterInfo[] pars = ci.GetParameters();
-                if (/*!ContainGeneric(pars) &&*/ !IsObsolete(ci) && !DontExport(ci))
+                if (!IsObsolete(ci) && !DontExport(ci))
                     ret.Add(ci);
         }
         return ret.ToArray();
