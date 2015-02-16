@@ -83,8 +83,11 @@ namespace SLua
         {
             if (valueref!=0)
             {
-                // move unref to luastate thread
-                state.gcRef(valueref);
+                LuaState.UnRefAction act = (IntPtr l,int r) =>
+                {
+                    LuaDLL.lua_unref(l,r);
+                };
+                state.gcRef(act,valueref);
                 valueref = 0;
             }
         }
@@ -95,7 +98,50 @@ namespace SLua
         }
     }
 
-    public class LuaFunction : LuaVar
+	public class LuaDelegate : LuaFunction {
+		public object d;
+		int refCount=0;
+
+
+		public LuaDelegate(IntPtr l, int r):base(l,r)
+		{
+		}
+
+        public override void Dispose(bool disposeManagedResources)
+        {
+            if (valueref != 0)
+            {
+                LuaState.UnRefAction act = (IntPtr l,int r) =>
+                {
+                    LuaObject.removeDelgate(l,r);
+                    LuaDLL.lua_unref(l, r);
+                };
+                state.gcRef(act,valueref);
+                valueref = 0;
+            }
+            
+        }
+
+		public bool call(int nArgs,int errfunc) {
+			LuaDLL.lua_getref(L,valueref);
+			LuaDLL.lua_insert(L,-nArgs-1);
+			if (LuaDLL.lua_pcall(L, nArgs, -1, errfunc) != 0) {
+				LuaDLL.lua_pop(L, 1);
+				return false;
+			}
+			return true;
+		}
+
+		public void addRef() {
+			refCount++;
+		}
+
+		public void release() {
+			refCount--;
+		}
+	}
+	
+	public class LuaFunction : LuaVar
     {
         public LuaFunction(LuaState l, int r):base(l,r)
         {
@@ -153,7 +199,7 @@ namespace SLua
 
 			LuaDLL.lua_remove(L, error); // pop error function
 
-			return state.topObjects();
+			return state.topObjects(error-1);
         }
         
     }
@@ -217,7 +263,14 @@ namespace SLua
         public delegate byte[] LoaderDelegate(string fn);
         static public LoaderDelegate loaderDelegate;
 
-        Queue<int> refQueue;
+
+        public delegate void UnRefAction(IntPtr l,int r);
+        struct UnrefPair
+        {
+            public UnRefAction act;
+            public int r;
+        }
+        Queue<UnrefPair> refQueue;
 
 
         public static LuaState main;
@@ -234,17 +287,23 @@ namespace SLua
             statemap[L] = this;
             if (main == null) main = this;
 
-            refQueue = new Queue<int>();
+            refQueue = new Queue<UnrefPair>();
 
             LuaDLL.luaL_openlibs(L);
 
             ObjectCache.make(L);
+
+            LuaDLL.lua_pushlightuserdata(L, L);
+            LuaDLL.lua_setglobal(L, "__main_state");
 
             LuaDLL.lua_pushstdcallcfunction(L, print);
             LuaDLL.lua_setglobal(L, "print");
 
             LuaDLL.lua_pushstdcallcfunction(L, pcall);
             LuaDLL.lua_setglobal(L, "pcall");
+
+            LuaDLL.lua_pushstdcallcfunction(L, import);
+            LuaDLL.lua_setglobal(L, "import");
 
             LuaDLL.lua_pushstdcallcfunction(L, loader);
             int loaderFunc = LuaDLL.lua_gettop(L);
@@ -276,7 +335,7 @@ namespace SLua
 				// be careful, if you close lua vm, make sure you don't use lua state again,
 				// comment this line as default for avoid unexpected crash.
                 // LuaDLL.lua_close(L);
-                L = IntPtr.Zero;
+                // L = IntPtr.Zero;
             }
         }
 
@@ -307,6 +366,29 @@ namespace SLua
             LuaDLL.lua_remove(L, -2);
             Debug.LogError(LuaDLL.lua_tostring(L, -1));
             LuaDLL.lua_pop(L, 1);
+            return 0;
+        }
+
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        internal static int import(IntPtr l)
+        {
+            LuaDLL.luaL_checktype(l, 1, LuaTypes.LUA_TSTRING);
+            string ns = LuaDLL.lua_tostring(l, 1);
+
+            LuaDLL.lua_getglobal(l, ns);
+            if (!LuaDLL.lua_istable(l, -1))
+            {
+                LuaDLL.luaL_error(l, "expect %s is type table", ns);
+                return 0;
+            }
+
+            LuaDLL.lua_pushnil(l);
+            while (LuaDLL.lua_next(l, -2)!=0) 
+            {
+                string key = LuaDLL.lua_tostring(l,-2);
+                LuaDLL.lua_setglobal(l, key);
+            }
+
             return 0;
         }
 
@@ -377,7 +459,7 @@ namespace SLua
                     LuaDLL.lua_pop(L, 1);
                 }
                 LuaDLL.lua_remove(L, errfunc); // pop error function
-				return topObjects();
+				return topObjects(errfunc-1);
             }
             else
             {
@@ -462,6 +544,7 @@ namespace SLua
 
         internal void setObject(string[] remainingPath, object o)
         {
+            int top = LuaDLL.lua_gettop(L);
             for (int i = 0; i < remainingPath.Length - 1; i++)
             {
                 LuaDLL.lua_pushstring(L, remainingPath[i]);
@@ -470,6 +553,7 @@ namespace SLua
             LuaDLL.lua_pushstring(L, remainingPath[remainingPath.Length - 1]);
             LuaObject.pushVar(L, o);
             LuaDLL.lua_settable(L, -3);
+            LuaDLL.lua_settop(L, top);
         }
 
        
@@ -491,41 +575,42 @@ namespace SLua
             LuaDLL.lua_settop(L, oldTop);
         }
 
-		internal object topObjects() 
-		{
-			int top = LuaDLL.lua_gettop(L);
-			if (top == 0)
-				return null;
-			else if (top == 1)
-			{
-				object o = LuaObject.checkVar(L, 1);
-				LuaDLL.lua_pop(L, 1);
-				return o;
-			}
-			else
-			{
-				object[] o = new object[top];
-				for (int n = 1; n <= top; n++)
-				{
-					o[n - 1] = LuaObject.checkVar(L, n);
-					
-				}
-				LuaDLL.lua_pop(L, top);
-				return o;
-			}
-		}
-			
-			object getObject(IntPtr l, int p)
-			{
-				return LuaObject.checkVar(l,p);
-			}
-			
-			public LuaFunction getFunction(string key)
-			{
-				return (LuaFunction)this[key];
-			}
-			
-			public LuaTable getTable(string key)
+        internal object topObjects(int from)
+        {
+            int top = LuaDLL.lua_gettop(L);
+            int nArgs = top - from;
+            if (nArgs == 0)
+                return null;
+            else if (nArgs == 1)
+            {
+                object o = LuaObject.checkVar(L, top);
+                LuaDLL.lua_pop(L, 1);
+                return o;
+            }
+            else
+            {
+                object[] o = new object[nArgs];
+                for (int n = 1; n <= nArgs; n++)
+                {
+                    o[n - 1] = LuaObject.checkVar(L, from + n);
+
+                }
+                LuaDLL.lua_settop(L, from);
+                return o;
+            }
+        }
+
+        object getObject(IntPtr l, int p)
+        {
+            return LuaObject.checkVar(l, p);
+        }
+
+        public LuaFunction getFunction(string key)
+        {
+            return (LuaFunction)this[key];
+        }
+
+        public LuaTable getTable(string key)
         {
             return (LuaTable)this[key];
         }
@@ -543,23 +628,26 @@ namespace SLua
             }
         }
 
-        public void gcRef(int r)
+        public void gcRef(UnRefAction act,int r)
         {
             lock (refQueue)
             {
-                refQueue.Enqueue(r);    
+                UnrefPair u = new UnrefPair();
+                u.act = act;
+                u.r=r;
+                refQueue.Enqueue(u);    
             }
         }
 
         public void checkRef()
         {
             while( refQueue.Count> 0 ) {
-                int r;
+                UnrefPair u;
                 lock (refQueue)
                 {
-                    r = refQueue.Dequeue();
+                    u = refQueue.Dequeue();
                 }
-				LuaDLL.lua_unref(L, r);
+                u.act(L, u.r);
             }
         }
     }
