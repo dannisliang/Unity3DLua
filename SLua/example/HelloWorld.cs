@@ -24,15 +24,21 @@ public class HelloWorld   {
     }
 
     static public void setv(LuaTable t) {
-        Debug.Log(t["name"]);
-        Debug.Log(t["value"]);
+        foreach (LuaTable.TablePair pair in t)
+        {
+            Debug.Log(string.Format("{0}-{1}",pair.key,pair.value));
+        }
     }
 
     static public LuaTable getv()
     {
         LuaTable t = new LuaTable(LuaState.main);
         t["name"] = "xiaoming";
-        t["age"] = 12;
+        t[1] = "a";
+        t[2] = "b";
+
+        t["xxx"] = new LuaTable(LuaState.main);
+        ((LuaTable)t["xxx"])["yyy"] = 1;
         return t;
     }
 
@@ -127,6 +133,16 @@ public class HelloWorld   {
             Debug.Log(args[n]);
         }
     }
+
+	LuaFunction f;
+	public void func7(LuaFunction func) {
+		f=func;
+		f.call();
+	}
+
+	public void func7(int a) {
+		Debug.Log(a);
+	}
 
     [DoNotToLua]
     static public void dontexport()

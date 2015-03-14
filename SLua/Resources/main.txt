@@ -1,17 +1,17 @@
+local somemodule = require 'module.some'
 
-local Vector3 = UnityEngine.Vector3
-local GameObject = UnityEngine.GameObject
-local Profiler = UnityEngine.Profiler
-local Time = UnityEngine.Time
+import "UnityEngine"
 
 function main()
 
-	local n=0
-	-- delegate test
-	UnityEngine.Application.RegisterLogCallback(function(cond,traceback,t)
-		-- don't use print, it's caused dead loop
-		n=n+1
-	end)
+	if jit then
+		print("using luajit ",jit.version,jit.arch)
+	else
+		print("using lua")
+	end
+
+	-- test module require
+	print(somemodule.add(2,3))
 
 	local go = GameObject.Find("Canvas/Button")
 	local btn = go:GetComponent("Button")
@@ -23,7 +23,6 @@ function main()
 		label.text="hello world"
 	end)
 	
-
 
 	local go = GameObject.Find("Canvas/Panel2"):GetComponent("ScrollRect")
 	local go = GameObject.Find("Canvas/Panel2"):GetComponent("ScrollRect")
@@ -37,20 +36,43 @@ function main()
 	cube.name="Script cube"
 	cube2.name="Script cube2"
 
+	cube.transform:SetParent(cube2.transform)
+
 	local pos = Vector3(10,10,10)+Vector3(1,1,1)
 	cube.transform.position = pos
 	cube.transform.localScale = Vector3(10,10,10)
 	print(cube==cube2)
+
+	LuaTimer.Add(0,20,function(id)
+		cube.transform.localScale = Vector3(10,10,10)*(0.1+math.sin(Time.time))
+		cube2.transform.position = Vector3(math.sin(Time.time)*5,0,0)
+		return true
+	end)
 
 	print(UnityEngine.PrimitiveType.Cube,type(UnityEngine.PrimitiveType.Cube))
 
 
 	print("LogCallback occured",n)
 
+	local c=coroutine.create(function()
+
+		print "coroutine start"
+
+		Yield(WaitForSeconds(2))
+		print "coroutine WaitForSeconds 2"
+
+		local www = WWW("http://www.sineysoft.com")
+		Yield(www)
+		print(#www.bytes)
+	end)
+	coroutine.resume(c)
+
 	-- test lua table
 	HelloWorld.setv({name="yes",value=12})
 	local t=HelloWorld.getv()
-	print(t.name,t.age)
+	for k,v in pairs(t) do
+		print("table value",k,v)
+	end
 
 	-- test overload func
 	HelloWorld.ofunc(GameObject)
@@ -61,6 +83,14 @@ function main()
 	HelloWorld.func6("aa",1,2,3,"bb")
 	HelloWorld.func6("aa",1,2,3,"bb",true,false)
 	HelloWorld.func6("aa")
+	
+	-- test luafunction
+	local h=HelloWorld()
+	h:func7(abc)
+end
+
+function abc()
+	print("call func7 callback")
 end
 
 function foo(a,b,c)
@@ -70,3 +100,5 @@ end
 function str()
 	return "slua"
 end
+
+return 1,2,3
