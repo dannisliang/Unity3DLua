@@ -35,31 +35,12 @@ public class LuaCodeGen : MonoBehaviour
 {
 
 
-    public static string path = "Assets/Slua/LuaObject/";
+    public static string path = "Assets/SLua/LuaObject/";
+
+    
 
 
-    [InitializeOnLoad]
-    public class Startup 
-    {
-
-        static Startup()
-        {
-            bool ok = System.IO.Directory.Exists(path);
-            if (!ok && EditorUtility.DisplayDialog("Slua", "Not found lua interface for Unity, generate it now?", "Generate", "No"))
-            {
-                GenerateAll();
-            }
-        }
-    }
-		
-	[MenuItem("SLua/Make ALL")]
-	static public void GenerateAll() {
-		Generate();
-		GenerateUI();
-		Custom();
-	}
-		
-	[MenuItem("SLua/Make UnityEngine")]
+    [MenuItem("SLua/Make")]
     static public void Generate()
     {
         CodeGenerator.InnerTypes.Clear();
@@ -271,25 +252,14 @@ public class LuaCodeGen : MonoBehaviour
     [MenuItem("SLua/Clear Custom")]
     static public void ClearCustom()
     {
-        clear(new string[]{path+"Custom"});
-        Debug.Log("Clear custom complete.");
-    }
-
-    [MenuItem("SLua/Clear All")]
-    static public void ClearALL()
-    {
-        clear(new string[] { path.Substring(0, path.Length - 1) });
-        Debug.Log("Clear all complete.");
-    }
-
-    static void clear(string[] paths)
-    {
-        foreach (string path in paths)
+        string[] assets = AssetDatabase.FindAssets("", new string[]{path+"Custom"});
+        foreach (string asset in assets)
         {
-            System.IO.Directory.Delete(path, true);
+            string p = AssetDatabase.GUIDToAssetPath(asset);
+            AssetDatabase.DeleteAsset(p);
         }
-        
         AssetDatabase.Refresh();
+        Debug.Log("Clear custom complete.");
     }
 
     static bool Generate(Type t)
@@ -336,10 +306,6 @@ class CodeGenerator
 		"Application.ExternalEval",
 		"GameObject.networkView",
 		"Component.networkView",
-        // unity5
-        "AnimatorControllerParameter.name",
-        "Input.IsJoystickPreconfigured",
-        "Resources.LoadAssetAtPath",
     };
 
     public static HashSet<string> InnerTypes = new HashSet<string>();
@@ -861,7 +827,7 @@ namespace SLua
         FieldInfo[] fields = t.GetFields(BindingFlags.Static | BindingFlags.Public | BindingFlags.Instance|BindingFlags.DeclaredOnly);
         foreach (FieldInfo fi in fields)
         {
-            if (DontExport(fi) || IsObsolete(fi))
+            if (DontExport(fi))
                 continue;
 
 			PropPair pp = new PropPair();

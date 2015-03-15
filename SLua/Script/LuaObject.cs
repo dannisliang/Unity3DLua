@@ -54,6 +54,7 @@ public class StaticExportAttribute : System.Attribute
 	}
 }
 
+
 namespace SLua
 {
 
@@ -442,7 +443,7 @@ return index
             LuaDLL.lua_setfield(l, instance?-2:-3, name);
         }
 
-        protected static void addMember(IntPtr l, string name, LuaCSFunction get, LuaCSFunction set,bool instance)
+        protected static void addMember(IntPtr l, string name, LuaCSFunction get, LuaCSFunction set, bool instance=true)
         {
             int t = instance ? -2 : -3;
 
@@ -579,30 +580,15 @@ return index
             return true;
         }
 
-        public static bool matchType(IntPtr l, int total, int from, ParameterInfo[] pars)
-        {
-            if (total - from + 1 != pars.Length)
-                return false;
-
-            for (int n = 0; n < pars.Length; n++)
-            {
-                int p = n + from;
-                LuaTypes t = LuaDLL.lua_type(l, p);
-                if (!matchType(l, p, t, pars[n].ParameterType))
-                    return false;
-            }
-            return true;
-        }
 
 
-
-        static public bool checkType(IntPtr l, int p, out float v)
+        static internal bool checkType(IntPtr l, int p, out float v)
         {
             v = (float)LuaDLL.luaL_checknumber(l, p);
             return true;
         }
 
-        static public bool checkType(IntPtr l, int p, out float[] v)
+        static internal bool checkType(IntPtr l, int p, out float[] v)
         {
             LuaDLL.luaL_checktype(l, p, LuaTypes.LUA_TTABLE);
             int n = LuaDLL.lua_rawlen(l, p);
@@ -618,7 +604,7 @@ return index
             return true;
         }
 
-        static public bool checkType(IntPtr l, int p, out string v)
+        static internal bool checkType(IntPtr l, int p, out string v)
         {
             //LuaDLL.luaL_checktype(l, p, LuaTypes.LUA_TSTRING);
             v = LuaDLL.lua_tostring(l, p);
@@ -648,7 +634,7 @@ return index
             return true;
         }
 
-//         static public bool checkType(IntPtr l, int p, out Vector4 v)
+//         static internal bool checkType(IntPtr l, int p, out Vector4 v)
 //         {
 //             v = Vector4.zero;
 //             if (!luaTypeCheck(l, p, "Vector4"))
@@ -667,7 +653,7 @@ return index
 //         }
 
         
-//         static public bool checkType(IntPtr l, int p, out Vector3 v)
+//         static internal bool checkType(IntPtr l, int p, out Vector3 v)
 //         {
 //             if (LuaDLL.lua_type(l, p) == LuaTypes.LUA_TUSERDATA)
 //                 return checkType<Vector3>(l, p, out v);
@@ -686,7 +672,7 @@ return index
 //             return true;
 //         }
 
-//         static public bool checkType(IntPtr l, int p, out Vector2 v)
+//         static internal bool checkType(IntPtr l, int p, out Vector2 v)
 //         {
 //             v = Vector3.zero;
 //             if (!luaTypeCheck(l, p, "Vector2"))
@@ -700,7 +686,7 @@ return index
 //             return true;
 //         }
 // 
-//         static public bool checkType(IntPtr l, int p, out Quaternion q)
+//         static internal bool checkType(IntPtr l, int p, out Quaternion q)
 //         {
 //             q = Quaternion.identity;
 //             if (!luaTypeCheck(l, p, "Quaternion"))
@@ -719,31 +705,31 @@ return index
 //         }
         
 
-        static public bool checkType(IntPtr l, int p, out int v)
+        static internal bool checkType(IntPtr l, int p, out int v)
         {
             v = (int) LuaDLL.luaL_checkinteger(l, p);
             return true;
         }
 
-        static public bool checkType(IntPtr l, int p, out short v)
+        static internal bool checkType(IntPtr l, int p, out short v)
         {
             v = (short)LuaDLL.luaL_checkinteger(l, p);
             return true;
         }
 
-        static public bool checkType(IntPtr l, int p, out byte v)
+        static internal bool checkType(IntPtr l, int p, out byte v)
         {
             v = (byte)LuaDLL.luaL_checkinteger(l, p);
             return true;
         }
 
-        static public bool checkType(IntPtr l, int p, out uint v)
+        static internal bool checkType(IntPtr l, int p, out uint v)
         {
             v = (uint)LuaDLL.luaL_checkinteger(l, p);
             return true;
         }
 
-        static public bool checkType(IntPtr l, int p, out Int64 v)
+        static internal bool checkType(IntPtr l, int p, out Int64 v)
         {
 #if LUA_5_3
             v = LuaDLL.luaL_checkinteger(l, p);
@@ -753,7 +739,7 @@ return index
             return true;
         }
 
-        static public bool checkType(IntPtr l, int p, out UInt64 v)
+        static internal bool checkType(IntPtr l, int p, out UInt64 v)
         {
 #if LUA_5_3
             v = (UInt64)LuaDLL.luaL_checkinteger(l, p);
@@ -763,7 +749,7 @@ return index
             return true;
         }
 
-        static public bool checkType(IntPtr l, int p, out bool v)
+        static internal bool checkType(IntPtr l, int p, out bool v)
         {
             LuaDLL.luaL_checktype(l, p, LuaTypes.LUA_TBOOLEAN);
             v = LuaDLL.lua_toboolean(l, p);
@@ -771,7 +757,7 @@ return index
         }
 
         static WeakDictionary<int, LuaDelegate> delgateMap = new WeakDictionary<int, LuaDelegate>();
-        static public bool checkType(IntPtr l, int p, out LuaDelegate f)
+        static internal bool checkType(IntPtr l, int p, out LuaDelegate f)
         {
             p = LuaDLL.lua_absindex(l, p);
             LuaDLL.luaL_checktype(l, p, LuaTypes.LUA_TFUNCTION);
@@ -819,7 +805,7 @@ return index
             LuaDLL.lua_pop(l, 1); // pop __LuaDelegate
         }
 
-		static public bool checkType(IntPtr l, int p, out LuaFunction f)
+		static internal bool checkType(IntPtr l, int p, out LuaFunction f)
 		{
 			LuaDLL.luaL_checktype(l, p, LuaTypes.LUA_TFUNCTION);
 			LuaDLL.lua_pushvalue(l, p);
@@ -828,7 +814,7 @@ return index
 			return true;
 		}
 		
-		static public bool checkType(IntPtr l, int p, out LuaTable t)
+		static internal bool checkType(IntPtr l, int p, out LuaTable t)
         {
             LuaDLL.luaL_checktype(l, p, LuaTypes.LUA_TTABLE);
             LuaDLL.lua_pushvalue(l, p);
@@ -838,7 +824,7 @@ return index
         }
 
         static Dictionary<string, Type> typeCache = new Dictionary<string, Type>();
-        static public bool checkType(IntPtr l, int p, out Type t)
+        static internal bool checkType(IntPtr l, int p, out Type t)
         {
             string tname=null;
             LuaTypes lt = LuaDLL.lua_type(l, p);
@@ -869,7 +855,7 @@ return index
             return t != null;
         }
 
-        static public bool checkType<T>(IntPtr l, int p, out T o) {
+        static internal bool checkType<T>(IntPtr l, int p, out T o) {
             o = (T)checkVar(l, p);
             return true;
         }
@@ -880,22 +866,22 @@ return index
             return oc.get(l, p);
         }
 
-        static public bool checkType(IntPtr l, int p, out object[] o)
+        static internal bool checkType(IntPtr l, int p, out object[] o)
         {
             throw new NotSupportedException();
         }
 
-        static public bool checkType(IntPtr l, int p, out Type[] t)
+        static internal bool checkType(IntPtr l, int p, out Type[] t)
         {
             throw new NotSupportedException();
         }
 
-        static public bool checkType(IntPtr l, int p, out Array t)
+        static internal bool checkType(IntPtr l, int p, out Array t)
         {
             throw new NotSupportedException();
         }
 
-        static public bool checkType(IntPtr l, int p, out string[] t)
+        static internal bool checkType(IntPtr l, int p, out string[] t)
         {
             LuaDLL.luaL_checktype(l, p, LuaTypes.LUA_TTABLE);
             int n = LuaDLL.lua_rawlen(l, p);
@@ -983,7 +969,7 @@ return index
             return true;
         }
 
-        static public bool checkParams(IntPtr l, int p, out string[] pars)
+        static internal bool checkParams(IntPtr l, int p, out string[] pars)
         {
             int top = LuaDLL.lua_gettop(l);
             if (top - p >= 0)
@@ -999,7 +985,7 @@ return index
             return true;
         }
 
-		static public object checkVar(IntPtr l,int p) {
+		static internal object checkVar(IntPtr l,int p) {
 			LuaTypes type = LuaDLL.lua_type(l, p);
 			switch (type)
 			{
@@ -1037,12 +1023,12 @@ return index
 		}
 
 
-        public static void pushValue(IntPtr l, float o)
+        internal static void pushValue(IntPtr l, float o)
         {
             LuaDLL.lua_pushnumber(l, o);
         }
 
-        public static void pushValue(IntPtr l, float[] o)
+        internal static void pushValue(IntPtr l, float[] o)
         {
             if( o == null)
             {
@@ -1057,7 +1043,7 @@ return index
             }
         }
 
-        public static void pushValue(IntPtr l, byte[] o)
+        internal static void pushValue(IntPtr l, byte[] o)
         {
             LuaDLL.lua_pushlstring(l, o, o.Length);
         }
@@ -1065,7 +1051,7 @@ return index
 		// i don't know why c# find a wrong generic function
 		// push T will push object not a real push<T>
 
-//         public static void pushValue<T>(IntPtr l, List<T> list)
+//         internal static void pushValue<T>(IntPtr l, List<T> list)
 //         {
 //             LuaDLL.lua_newtable(l);
 //             for (int n = 0; n < list.Count; n++)
@@ -1075,7 +1061,7 @@ return index
 //             }
 //         }
 // 
-//         public static void pushValue<K,V>(IntPtr l, Dictionary<K,V> dict)
+//         internal static void pushValue<K,V>(IntPtr l, Dictionary<K,V> dict)
 //         {
 //             LuaDLL.lua_newtable(l);
 //             foreach (K k in dict.Keys)
@@ -1086,12 +1072,12 @@ return index
 //             }
 //         }
 
-        public static void pushValue(IntPtr l, bool b)
+        internal static void pushValue(IntPtr l, bool b)
         {
             LuaDLL.lua_pushboolean(l, b);
         }
 
-        public static void pushValue(IntPtr l, bool[] o)
+        internal static void pushValue(IntPtr l, bool[] o)
         {
             if( o == null)
             {
@@ -1106,12 +1092,12 @@ return index
             }
         }
 
-        public static void pushValue(IntPtr l, string s)
+        internal static void pushValue(IntPtr l, string s)
         {
             LuaDLL.lua_pushstring(l, s);
         }
 
-        public static void pushValue(IntPtr l, string[] o)
+        internal static void pushValue(IntPtr l, string[] o)
         {
             if( o == null)
             {
@@ -1126,22 +1112,22 @@ return index
             }
         }
 
-        public static void pushValue(IntPtr l, int i)
+        internal static void pushValue(IntPtr l, int i)
         {
             LuaDLL.lua_pushinteger(l, i);
         }
 
-        public static void pushValue(IntPtr l, short i)
+        internal static void pushValue(IntPtr l, short i)
         {
             LuaDLL.lua_pushinteger(l, i);
         }
 
-        public static void pushValue(IntPtr l, byte i)
+        internal static void pushValue(IntPtr l, byte i)
         {
             LuaDLL.lua_pushinteger(l, i);
         }
 
-        public static void pushValue(IntPtr l, int[] o)
+        internal static void pushValue(IntPtr l, int[] o)
         {
             if( o == null)
             {
@@ -1165,7 +1151,7 @@ return index
 #endif
         }
 
-        public static void pushValue(IntPtr l, Int64[] o)
+        internal static void pushValue(IntPtr l, Int64[] o)
         {
             if( o == null)
             {
@@ -1180,12 +1166,12 @@ return index
             }
         }
 
-        public static void pushValue(IntPtr l, double d)
+        internal static void pushValue(IntPtr l, double d)
         {
             LuaDLL.lua_pushnumber(l, d);
         }
 
-        public static void pushValue(IntPtr l, double[] o)
+        internal static void pushValue(IntPtr l, double[] o)
         {
             if( o == null)
             {
@@ -1200,12 +1186,12 @@ return index
             }
         }
 
-        public static void pushValue(IntPtr l, UnityEngine.Object o)
+        internal static void pushValue(IntPtr l, UnityEngine.Object o)
         {
             pushObject(l, o);
         }
 
-        public static void pushValue(IntPtr l, UnityEngine.Object[] o)
+        internal static void pushValue(IntPtr l, UnityEngine.Object[] o)
         {
             if( o == null)
             {
@@ -1220,13 +1206,13 @@ return index
             }
         }
 
-        public static void pushValue(IntPtr l, object o)
+        internal static void pushValue(IntPtr l, object o)
         {
             pushVar(l, o);
         }
 
 
-        public static void pushValue(IntPtr l, object[] o)
+        internal static void pushValue(IntPtr l, object[] o)
         {
             if( o == null)
             {
@@ -1241,12 +1227,12 @@ return index
             }
         }
 
-        public static void pushValue(IntPtr l, LuaCSFunction f)
+        internal static void pushValue(IntPtr l, LuaCSFunction f)
         {
             pushObject(l, f);
         }
 
-        public static void pushValue(IntPtr l, LuaTable t)
+        internal static void pushValue(IntPtr l, LuaTable t)
         {
             t.push(l);
         }
@@ -1269,7 +1255,7 @@ return index
 //             LuaDLL.lua_setmetatable(l, -2);
 //         }
 // 
-//        public static void pushValue(IntPtr l, Vector2 o)
+//        internal static void pushValue(IntPtr l, Vector2 o)
 //        {
 //            LuaDLL.lua_newtable(l);
 //            LuaDLL.lua_pushnumber(l, o.x);
@@ -1285,7 +1271,7 @@ return index
 
 
 
-//        public static void pushValue(IntPtr l, Vector3 o)
+//        internal static void pushValue(IntPtr l, Vector3 o)
 //        {
 //            LuaDLL.lua_newtable(l);
 //            LuaDLL.lua_pushnumber(l, o.x);
@@ -1303,7 +1289,7 @@ return index
 
 
 
-//        public static void pushValue(IntPtr l, Vector4 o)
+//        internal static void pushValue(IntPtr l, Vector4 o)
 //        {
 //            LuaDLL.lua_newtable(l);
 //            LuaDLL.lua_pushnumber(l, o.x);
@@ -1322,13 +1308,13 @@ return index
 //        }
 
 
-        public static void pushEnum(IntPtr l, int e)
+        internal static void pushEnum(IntPtr l, int e)
         {
             pushValue(l, e);
         }
 
 
-        public static void pushVar(IntPtr l, object o)
+        internal static void pushVar(IntPtr l, object o)
         {
             if(o==null)
             {

@@ -43,11 +43,6 @@ namespace SLua
         static public int Yield(IntPtr l)
         {
 			try {
-                if (LuaDLL.lua_pushthread(l) == 1)
-                {
-                    LuaDLL.luaL_error(l, "should put Yield call into lua coroutine.");
-                    return 0;
-                }
 	           	object y = checkObj(l, 1);
 
 	            Action act = () =>

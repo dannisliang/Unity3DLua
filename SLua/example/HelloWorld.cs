@@ -24,21 +24,15 @@ public class HelloWorld   {
     }
 
     static public void setv(LuaTable t) {
-        foreach (LuaTable.TablePair pair in t)
-        {
-            Debug.Log(string.Format("{0}-{1}",pair.key,pair.value));
-        }
+        Debug.Log(t["name"]);
+        Debug.Log(t["value"]);
     }
 
     static public LuaTable getv()
     {
         LuaTable t = new LuaTable(LuaState.main);
         t["name"] = "xiaoming";
-        t[1] = "a";
-        t[2] = "b";
-
-        t["xxx"] = new LuaTable(LuaState.main);
-        ((LuaTable)t["xxx"])["yyy"] = 1;
+        t["age"] = 12;
         return t;
     }
 
